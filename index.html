@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HTML 工具集 - 纯本地</title>
+    
+    <!-- 引入 Tailwind CSS 进行页面美化 -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- === 各种前端开源库，用于本地实现功能 === -->
+    <!-- qrcode.js 用于生成二维码 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- browser-image-compression 用于图片压缩 -->
+    <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
+    <!-- mammoth.js 用于解析 Word (docx) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <!-- html2pdf.js 用于将 HTML 打印成 PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <!-- pdf.js 用于解析 PDF -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <!-- jszip.js 用于打包多张图片为 zip -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <!-- marked.js 用于解析 Markdown -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
+    <!-- SheetJS (xlsx) 用于处理 Excel -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
+    <style>
+        /* 隐藏未激活的工具面板 */
+        .tool-panel { display: none; }
+        .tool-panel.active { display: block; }
+        /* 滚动条美化 */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+    </style>
+</head>
+<body class="bg-gray-50 flex h-screen overflow-hidden text-gray-800 font-sans">
+    
+    <!-- 左侧导航栏 -->
+    <aside class="w-64 bg-white border-r shadow-sm flex flex-col z-10">
+        <div class="p-6 border-b">
+            <h1 class="text-xl font-bold text-gray-900">🧰 前端工具集</h1>
+            <p class="text-xs text-gray-500 mt-2">纯本地计算 · 保护隐私</p>
+        </div>
+        <nav class="flex-1 overflow-y-auto p-4 space-y-1" id="nav-menu">
+            <button onclick="switchTab('tool-age')" id="nav-tool-age" class="nav-btn active w-full text-left px-4 py-3 rounded-lg bg-blue-50 text-blue-700 font-medium transition-colors">📅 年龄计算器</button>
+            <button onclick="switchTab('tool-qr')" id="nav-tool-qr" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">🔗 链接二维码生成</button>
+            <button onclick="switchTab('tool-ic')" id="nav-tool-ic" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">🖼️ 图片压缩</button>
+            <button onclick="switchTab('tool-w2p')" id="nav-tool-w2p" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">📄 Word转PDF</button>
+            <button onclick="switchTab('tool-p2i')" id="nav-tool-p2i" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">🖼️ PDF转图片</button>
+            <button onclick="switchTab('tool-i2i')" id="nav-tool-i2i" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">🔄 png/jpg转ico</button>
+            <button onclick="switchTab('tool-t2j')" id="nav-tool-t2j" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">📋 txt转json</button>
+            <button onclick="switchTab('tool-m2w')" id="nav-tool-m2w" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">📝 markdown转Word</button>
+            <button onclick="switchTab('tool-m2h')" id="nav-tool-m2h" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">🌐 markdown转HTML</button>
+            <button onclick="switchTab('tool-e2c')" id="nav-tool-e2c" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">📊 Excel转CSV</button>
+        </nav>
+    </aside>
+
+    <!-- 右侧工作区 -->
+    <main class="flex-1 p-8 overflow-y-auto relative bg-gray-50">
+        
+        <!-- 1. 年龄计算器 -->
+        <section id="tool-age" class="tool-panel active max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h2 class="text-2xl font-bold mb-6">📅 年龄计算器</h2>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">请选择出生日期</label>
+                    <input type="date" id="birth-date" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                </div>
+                <button onclick="calculateAge()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">计算年龄</button>
+                <div id="age-result" class="mt-6 p-5 bg-blue-50 border border-blue-100 rounded-xl hidden"></div>
+            </div>
+        </section>
+
+        <!-- 2. 二维码生成器 -->
+        <section id="tool-qr" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h2 class="text-2xl font-bold mb-6">🔗 链接二维码生成器</h2>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">输入文本或链接</label>
+                    <textarea id="qr-text" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" placeholder="例如：https://tools.karing.app/"></textarea>
+                </div>
+                <button onclick="generateQR()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">生成二维码</button>
+                <div class="mt-6 flex justify-center">
+                    <div id="qrcode-container" class="p-4 bg-white border border-gray-200 rounded-xl hidden shadow-sm"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. 图片压缩 -->
+        <section id="tool-ic" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h2 class="text-2xl font-bold mb-6">🖼️ 图片压缩工具</h2>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">选择要压缩的图片 (纯本地处理，保护隐私)</label>
+                    <input type="file" id="ic-file" accept="image/*" class="w-full border-gray-300 rounded-lg shadow-sm p-2 border">
+                </div>
+                <button onclick="compressImage()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">开始压缩并下载</button>
+                <div id="ic-status" class="mt-4 text-sm text-gray-600 font-medium"></div>
+            </div>
+        </section>
+
+        <!-- 4. Word转PDF -->
+        <section id="tool-w2p" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h2 class="text-2xl font-bold mb-6">📄 Word 转 PDF</h2>
+            <div class="space-y-5">
+                <p class="text-sm text-gray-500 bg-yellow-50 p-3 rounded border border-yellow-200">提示：此为纯前端实现，复杂排版可能会部分丢失。适用于文字为主的简单文档。</p>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">选择 Word 文档 (.docx)</label>
+                    <input type="file" id="w2p-file" accept=".docx" class="w-full border-gray-300 rounded-lg shadow-sm p-2 border">
+                </div>
+                <button onclick="convertWord2Pdf()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">转换为 PDF</button>
+                <div id="w2p-status" class="mt-4 text-sm text-gray-600 font-medium"></div>
+            </div>
+        </section>
+
+        <!-- 5. PDF转图片 -->
+        <section id="tool-p2i" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h2 class="text-2xl font-bold mb-6">🖼️ PDF 转 图片</h2>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">选择 PDF 文件 (多页将打包为 ZIP)</label>
+                    <input type="file" id="p2i-file" accept="application/pdf" class="w-full border-gray-300 rounded-lg shadow-sm p-2 border">
+                </div>
+                <button onclick="convertPdf2Img()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">转换为图片包 (ZIP)</button>
+                <div id="p2i-status" class="mt-4 text-sm text-gray-600 font-medium"></div>
+            </div>
+        </section>
+
+        <!-- 6. png/jpg转ico -->
+        <section id="tool-i2i" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h2 class="text-2xl font-bold mb-6">🔄 图片 转 ico 图标</h2>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">选择要转换的图片 (PNG, JPG)</label>
+                    <input type="file" id="i2i-file" accept="image/png, image/jpeg, image/webp" class="w-full border-gray-300 rounded-lg shadow-sm p-2 border">
+                </div>
+                <button onclick="convertImg2Ico()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">生成 .ico 图标</button>
+                <div id="i2i-status" class="mt-4 text-sm text-gray-600 font-medium"></div>
+            </div>
+        </section>
+
+        <!-- 7. txt转json -->
+        <section id="tool-t2j" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h2 class="text-2xl font-bold mb-6">📋 txt 转 json</h2>
+            <div class="space-y-5">
+                <p class="text-sm text-gray-500 bg-gray-50 p-3 rounded border">默认逻辑：将 txt 文本按行分割，转换为 JSON 数组。</p>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">选择 TXT 文件</label>
+                    <input type="file" id="t2j-file" accept=".txt" class="w-full border-gray-300 rounded-lg shadow-sm p-2 border">
+                </div>
+                <button onclick="convertTxt2Json()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">转换为 JSON</button>
+                <div id="t2j-status" class="mt-4 text-sm text-gray-600 font-medium"></div>
+            </div>
+        </section>
+
+        <!-- 8. markdown转Word -->
+        <section id="tool-m2w" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h2 class="text-2xl font-bold mb-6">📝 markdown 转 Word</h2>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">输入 Markdown 内容</label>
+                    <textarea id="m2w-text" rows="8" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 font-mono text-sm" placeholder="# 标题\n\n- 列表 1\n- 列表 2"></textarea>
+                </div>
+                <button onclick="convertMd2Word()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">导出为 Word (.doc)</button>
+            </div>
+        </section>
+
+        <!-- 9. markdown转HTML -->
+        <section id="tool-m2h" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h2 class="text-2xl font-bold mb-6">🌐 markdown 转 HTML</h2>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">输入 Markdown 内容</label>
+                    <textarea id="m2h-text" rows="8" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 font-mono text-sm" placeholder="# 标题\n\n- 列表 1\n- 列表 2"></textarea>
+                </div>
+                <button onclick="convertMd2Html()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">导出为 HTML</button>
+            </div>
+        </section>
+
+        <!-- 10. Excel转CSV -->
+        <section id="tool-e2c" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+            <h2 class="text-2xl font-bold mb-6">📊 Excel 转 CSV</h2>
+            <div class="space-y-5">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-2">选择 Excel 文件 (.xlsx, .xls)</label>
+                    <input type="file" id="e2c-file" accept=".xlsx, .xls" class="w-full border-gray-300 rounded-lg shadow-sm p-2 border">
+                </div>
+                <button onclick="convertExcel2Csv()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">转换为 CSV</button>
+                <div id="e2c-status" class="mt-4 text-sm text-gray-600 font-medium"></div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- === 核心 JavaScript 逻辑 === -->
+    <script>
+        // --- 0. 公共函数 ---
+        // 切换左侧标签
+        function switchTab(tabId) {
+            document.querySelectorAll('.tool-panel').forEach(el => el.classList.remove('active'));
+            document.getElementById(tabId).classList.add('active');
+            
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = "nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors";
+            });
+            document.getElementById('nav-' + tabId).className = "nav-btn active w-full text-left px-4 py-3 rounded-lg bg-blue-50 text-blue-700 font-medium transition-colors";
+        }
+
+        // 通用下载函数
+        function downloadFile(filename, content, mimeType) {
+            const link = document.createElement('a');
+            if (content instanceof Blob) {
+                link.href = URL.createObjectURL(content);
+            } else {
+                const blob = new Blob([content], { type: mimeType });
+                link.href = URL.createObjectURL(blob);
+            }
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // 配置 PDF.js 的 worker
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // --- 1. 年龄计算器 ---
+        function calculateAge() {
+            const birthDateStr = document.getElementById('birth-date').value;
+            if (!birthDateStr) return alert('请先选择出生日期！');
+            const birthDate = new Date(birthDateStr);
+            const today = new Date();
+            let age = today.getFullYear() - birthDate.getFullYear();
+            const m = today.getMonth() - birthDate.getMonth();
+            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+                age--; // 生日没过，减一岁
+            }
+            const resultDiv = document.getElementById('age-result');
+            resultDiv.innerHTML = `<span class="text-gray-700">您当前的周岁年龄是：<strong class="text-blue-600 text-3xl ml-2">${age}</strong> 岁</span>`;
+            resultDiv.classList.remove('hidden');
+        }
+
+        // --- 2. 二维码生成器 ---
+        let qrcode = null;
+        function generateQR() {
+            const text = document.getElementById('qr-text').value;
+            if (!text) return alert('请输入需要生成二维码的内容！');
+            const container = document.getElementById('qrcode-container');
+            container.innerHTML = ''; 
+            container.classList.remove('hidden');
+            qrcode = new QRCode(container, {
+                text: text, width: 220, height: 220,
+                colorDark : "#111827", colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        }
+
+        // --- 3. 图片压缩 ---
+        async function compressImage() {
+            const fileInput = document.getElementById('ic-file').files[0];
+            if (!fileInput) return alert('请选择图片');
+            const status = document.getElementById('ic-status');
+            status.innerText = '正在压缩...';
+            try {
+                // 设置压缩选项 (最大 1MB, 使用 Worker 保证不卡顿)
+                const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true };
+                const compressedFile = await browserImageCompression(fileInput, options);
+                downloadFile('compressed_' + fileInput.name, compressedFile);
+                status.innerText = `压缩完成！大小从 ${(fileInput.size/1024/1024).toFixed(2)}MB 降到了 ${(compressedFile.size/1024/1024).toFixed(2)}MB`;
+            } catch (err) {
+                status.innerText = '压缩失败：' + err.message;
+            }
+        }
+
+        // --- 4. Word 转 PDF ---
+        async function convertWord2Pdf() {
+            const fileInput = document.getElementById('w2p-file').files[0];
+            if (!fileInput) return alert('请选择 Word 文档');
+            const status = document.getElementById('w2p-status');
+            status.innerText = '正在读取和转换...';
+            try {
+                // 读取 Word 文件内容
+                const arrayBuffer = await fileInput.arrayBuffer();
+                // 转换为 HTML
+                const result = await mammoth.convertToHtml({arrayBuffer: arrayBuffer});
+                const container = document.createElement('div');
+                container.innerHTML = result.value;
+                container.style.padding = '30px';
+                container.style.width = '800px'; // 模拟 A4 宽度
+                container.style.fontSize = '14px';
+                
+                status.innerText = '正在生成 PDF，可能需要几秒钟...';
+                // 打印成 PDF
+                await html2pdf().from(container).set({
+                    margin: 10,
+                    filename: fileInput.name.replace(/\.[^/.]+$/, "") + '.pdf',
+                    html2canvas: { scale: 2 },
+                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                }).save();
+                status.innerText = '转换完成，已开始下载！';
+            } catch(err) {
+                status.innerText = '转换失败：' + err.message;
+            }
+        }
+
+        // --- 5. PDF 转 图片 ---
+        async function convertPdf2Img() {
+            const fileInput = document.getElementById('p2i-file').files[0];
+            if (!fileInput) return alert('请选择 PDF 文档');
+            const status = document.getElementById('p2i-status');
+            status.innerText = '正在解析 PDF...';
+            try {
+                const url = URL.createObjectURL(fileInput);
+                const pdf = await pdfjsLib.getDocument(url).promise;
+                const zip = new JSZip(); // 准备 ZIP 打包
+                
+                // 遍历每一页
+                for(let i=1; i<=pdf.numPages; i++) {
+                    status.innerText = `正在转换第 ${i} / ${pdf.numPages} 页...`;
+                    const page = await pdf.getPage(i);
+                    const viewport = page.getViewport({ scale: 2 }); // 提升清晰度
+                    const canvas = document.createElement('canvas');
+                    const context = canvas.getContext('2d');
+                    canvas.height = viewport.height;
+                    canvas.width = viewport.width;
+                    
+                    // 将 PDF 页面渲染到 canvas
+                    await page.render({canvasContext: context, viewport: viewport}).promise;
+                    
+                    // 转换 canvas 为 Blob
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                    zip.file(`page_${i}.png`, blob);
+                }
+                
+                status.innerText = '正在打包 ZIP...';
+                const zipBlob = await zip.generateAsync({type:"blob"});
+                downloadFile(fileInput.name.replace(/\.[^/.]+$/, "") + '_images.zip', zipBlob);
+                status.innerText = '转换完成，已下载 ZIP 文件！';
+            } catch(err) {
+                status.innerText = '转换失败：' + err.message;
+            }
+        }
+
+        // --- 6. png/jpg 转 ico ---
+        async function convertImg2Ico() {
+            const fileInput = document.getElementById('i2i-file').files[0];
+            if (!fileInput) return alert('请选择图片');
+            const status = document.getElementById('i2i-status');
+            status.innerText = '正在转换...';
+            try {
+                const img = new Image();
+                img.src = URL.createObjectURL(fileInput);
+                await new Promise(resolve => img.onload = resolve);
+                
+                // 将图片缩放到 256x256 (ICO 常规尺寸)
+                const canvas = document.createElement('canvas');
+                canvas.width = 256;
+                canvas.height = 256;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, 256, 256);
+                
+                // 导出为 Blob (强制 mimeType 为 ico)
+                canvas.toBlob(blob => {
+                    downloadFile(fileInput.name.replace(/\.[^/.]+$/, "") + '.ico', blob);
+                    status.innerText = '转换完成！';
+                }, 'image/x-icon');
+            } catch(err) {
+                status.innerText = '转换失败：' + err.message;
+            }
+        }
+
+        // --- 7. txt 转 json ---
+        async function convertTxt2Json() {
+            const fileInput = document.getElementById('t2j-file').files[0];
+            if (!fileInput) return alert('请选择 TXT 文件');
+            const status = document.getElementById('t2j-status');
+            status.innerText = '正在转换...';
+            try {
+                const text = await fileInput.text();
+                // 按行分割并去除空行
+                const lines = text.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+                const jsonStr = JSON.stringify({ data: lines }, null, 2);
+                downloadFile(fileInput.name.replace(/\.[^/.]+$/, "") + '.json', jsonStr, 'application/json');
+                status.innerText = '转换完成！';
+            } catch(err) {
+                status.innerText = '转换失败：' + err.message;
+            }
+        }
+
+        // --- 8. markdown 转 Word ---
+        function convertMd2Word() {
+            const text = document.getElementById('m2w-text').value;
+            if(!text) return alert('请输入 Markdown 内容');
+            const htmlContent = marked.parse(text); // markdown 转 html
+            // 构造 Word 兼容的简单 HTML 格式
+            const docHtml = `
+                <html xmlns:w="urn:schemas-microsoft-com:office:word">
+                <head><meta charset="utf-8"><title>Export</title></head>
+                <body>${htmlContent}</body>
+                </html>
+            `;
+            downloadFile('document.doc', docHtml, 'application/msword');
+        }
+
+        // --- 9. markdown 转 HTML ---
+        function convertMd2Html() {
+            const text = document.getElementById('m2h-text').value;
+            if(!text) return alert('请输入 Markdown 内容');
+            const htmlContent = marked.parse(text);
+            const docHtml = `<!DOCTYPE html>\n<html>\n<head><meta charset="utf-8"></head>\n<body>\n${htmlContent}\n</body>\n</html>`;
+            downloadFile('document.html', docHtml, 'text/html');
+        }
+
+        // --- 10. Excel 转 CSV ---
+        async function convertExcel2Csv() {
+            const fileInput = document.getElementById('e2c-file').files[0];
+            if (!fileInput) return alert('请选择 Excel 文件');
+            const status = document.getElementById('e2c-status');
+            status.innerText = '正在转换...';
+            try {
+                const arrayBuffer = await fileInput.arrayBuffer();
+                // 读取 Excel 数据
+                const workbook = XLSX.read(arrayBuffer, {type: 'array'});
+                const firstSheetName = workbook.SheetNames[0];
+                const worksheet = workbook.Sheets[firstSheetName];
+                // 转换为 CSV 字符串
+                const csv = XLSX.utils.sheet_to_csv(worksheet);
+                
+                // 增加 BOM 头部，防止 Excel 直接打开 CSV 乱码
+                const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+                const blob = new Blob([bom, csv], { type: 'text/csv;charset=utf-8;' });
+                downloadFile(fileInput.name.replace(/\.[^/.]+$/, "") + '.csv', blob);
+                status.innerText = '转换完成！';
+            } catch(err) {
+                status.innerText = '转换失败：' + err.message;
+            }
+        }
+    </script>
+</body>
+</html>
