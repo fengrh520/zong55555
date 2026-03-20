@@ -28,64 +28,125 @@
 
     <style>
         /* 隐藏未激活的工具面板 */
-        .tool-panel { display: none; }
-        .tool-panel.active { display: block; }
+        .tool-panel { 
+            display: none; 
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s ease, transform 0.3s ease;
+        }
+        .tool-panel.active { 
+            display: block; 
+            opacity: 1;
+            transform: translateY(0);
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+        
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(15px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         /* 滚动条美化 */
         ::-webkit-scrollbar { width: 6px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #d1d5db; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #9ca3af; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        /* 整体渐变背景与玻璃拟态效果 */
+        body {
+            background: linear-gradient(135deg, #f0fdfa 0%, #f8fafc 100%);
+        }
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+        }
+        
+        /* 按钮悬浮效果增强 */
+        .nav-btn {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .nav-btn:hover:not(.active) {
+            transform: translateX(4px);
+            background-color: #f1f5f9;
+        }
+        .nav-btn.active {
+            background: linear-gradient(to right, #eff6ff, #e0f2fe);
+            border-left: 4px solid #3b82f6;
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.02);
+        }
     </style>
 </head>
-<body class="bg-gray-50 flex h-screen overflow-hidden text-gray-800 font-sans">
+<body class="flex h-screen overflow-hidden text-gray-800 font-sans">
     
     <!-- 左侧导航栏 -->
-    <aside class="w-64 bg-white border-r shadow-sm flex flex-col z-10">
-        <div class="p-6 border-b">
-            <h1 class="text-xl font-bold text-gray-900">🧰 前端工具集</h1>
-            <p class="text-xs text-gray-500 mt-2">纯本地计算 · 保护隐私</p>
+    <aside class="w-64 glass-panel border-r border-gray-200/60 flex flex-col z-10 relative">
+        <div class="p-6 border-b border-gray-100">
+            <h1 class="text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 tracking-tight">🧰 前端工具集</h1>
+            <p class="text-xs text-slate-500 mt-2 font-medium">纯本地计算 · 保护隐私</p>
         </div>
-        <nav class="flex-1 overflow-y-auto p-4 space-y-1" id="nav-menu">
-            <button onclick="switchTab('tool-age')" id="nav-tool-age" class="nav-btn active w-full text-left px-4 py-3 rounded-lg bg-blue-50 text-blue-700 font-medium transition-colors">📅 年龄计算器</button>
-            <button onclick="switchTab('tool-qr')" id="nav-tool-qr" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">🔗 链接二维码生成</button>
-            <button onclick="switchTab('tool-ic')" id="nav-tool-ic" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">🖼️ 图片压缩</button>
-            <button onclick="switchTab('tool-w2p')" id="nav-tool-w2p" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">📄 Word转PDF</button>
-            <button onclick="switchTab('tool-p2i')" id="nav-tool-p2i" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">🖼️ PDF转图片</button>
-            <button onclick="switchTab('tool-i2i')" id="nav-tool-i2i" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">🔄 png/jpg转ico</button>
-            <button onclick="switchTab('tool-t2j')" id="nav-tool-t2j" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">📋 txt转json</button>
-            <button onclick="switchTab('tool-m2w')" id="nav-tool-m2w" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">📝 markdown转Word</button>
-            <button onclick="switchTab('tool-m2h')" id="nav-tool-m2h" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">🌐 markdown转HTML</button>
-            <button onclick="switchTab('tool-e2c')" id="nav-tool-e2c" class="nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors">📊 Excel转CSV</button>
+        <nav class="flex-1 overflow-y-auto p-4 space-y-1.5" id="nav-menu">
+            <button onclick="switchTab('tool-time')" id="nav-tool-time" class="nav-btn active w-full text-left px-4 py-3 rounded-lg text-blue-700 font-semibold">⏳ 时间计算器</button>
+            <button onclick="switchTab('tool-qr')" id="nav-tool-qr" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">🔗 链接二维码生成</button>
+            <button onclick="switchTab('tool-ic')" id="nav-tool-ic" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">🖼️ 图片压缩</button>
+            <button onclick="switchTab('tool-w2p')" id="nav-tool-w2p" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">📄 Word转PDF</button>
+            <button onclick="switchTab('tool-p2i')" id="nav-tool-p2i" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">🖼️ PDF转图片</button>
+            <button onclick="switchTab('tool-i2i')" id="nav-tool-i2i" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">🔄 png/jpg转ico</button>
+            <button onclick="switchTab('tool-t2j')" id="nav-tool-t2j" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">📋 txt转json</button>
+            <button onclick="switchTab('tool-m2w')" id="nav-tool-m2w" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">📝 markdown转Word</button>
+            <button onclick="switchTab('tool-m2h')" id="nav-tool-m2h" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">🌐 markdown转HTML</button>
+            <button onclick="switchTab('tool-e2c')" id="nav-tool-e2c" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">📊 Excel转CSV</button>
         </nav>
     </aside>
 
     <!-- 右侧工作区 -->
-    <main class="flex-1 p-8 overflow-y-auto relative bg-gray-50">
+    <main class="flex-1 p-8 overflow-y-auto relative">
         
-        <!-- 1. 年龄计算器 -->
-        <section id="tool-age" class="tool-panel active max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-            <h2 class="text-2xl font-bold mb-6">📅 年龄计算器</h2>
+        <!-- 1. 时间计算器 -->
+        <section id="tool-time" class="tool-panel active max-w-2xl mx-auto glass-panel p-8 rounded-2xl">
+            <h2 class="text-2xl font-bold mb-6 text-slate-800">⏳ 时间计算器</h2>
             <div class="space-y-5">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">请选择出生日期</label>
-                    <input type="date" id="birth-date" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all">
+                    <label class="block text-sm font-medium text-slate-700 mb-2">开始时间</label>
+                    <input type="datetime-local" id="start-time" step="1" class="w-full border-slate-200 rounded-xl shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white/80">
                 </div>
-                <button onclick="calculateAge()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">计算年龄</button>
-                <div id="age-result" class="mt-6 p-5 bg-blue-50 border border-blue-100 rounded-xl hidden"></div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">结束时间</label>
+                    <input type="datetime-local" id="end-time" step="1" class="w-full border-slate-200 rounded-xl shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white/80">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">计算单位</label>
+                    <select id="time-unit" class="w-full border-slate-200 rounded-xl shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white/80">
+                        <option value="days" selected>天 (Days)</option>
+                        <option value="hours">小时 (Hours)</option>
+                        <option value="minutes">分钟 (Minutes)</option>
+                        <option value="seconds">秒 (Seconds)</option>
+                    </select>
+                </div>
+                <button onclick="calculateTimeDiff()" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl hover:shadow-lg hover:-translate-y-0.5 font-medium transition-all duration-200 w-full sm:w-auto">计算时间差</button>
+                <div id="time-result" class="mt-6 p-5 bg-blue-50/80 border border-blue-100 rounded-xl hidden transition-all duration-300"></div>
             </div>
         </section>
 
         <!-- 2. 二维码生成器 -->
-        <section id="tool-qr" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-            <h2 class="text-2xl font-bold mb-6">🔗 链接二维码生成器</h2>
+        <section id="tool-qr" class="tool-panel max-w-2xl mx-auto glass-panel p-8 rounded-2xl">
+            <h2 class="text-2xl font-bold mb-6 text-slate-800">🔗 链接二维码生成器</h2>
             <div class="space-y-5">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">输入文本或链接</label>
-                    <textarea id="qr-text" rows="3" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all" placeholder="例如：https://tools.karing.app/"></textarea>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">输入文本或链接</label>
+                    <textarea id="qr-text" rows="3" class="w-full border-slate-200 rounded-xl shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white/80" placeholder="例如：https://tools.karing.app/"></textarea>
                 </div>
-                <button onclick="generateQR()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">生成二维码</button>
+                <button onclick="generateQR()" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl hover:shadow-lg hover:-translate-y-0.5 font-medium transition-all duration-200 w-full sm:w-auto">生成二维码</button>
                 <div class="mt-6 flex justify-center">
-                    <div id="qrcode-container" class="p-4 bg-white border border-gray-200 rounded-xl hidden shadow-sm"></div>
+                    <div id="qrcode-container" class="p-4 bg-white border border-slate-100 rounded-2xl hidden shadow-md transition-all duration-300 hover:shadow-lg"></div>
                 </div>
             </div>
         </section>
@@ -201,13 +262,21 @@
         // --- 0. 公共函数 ---
         // 切换左侧标签
         function switchTab(tabId) {
-            document.querySelectorAll('.tool-panel').forEach(el => el.classList.remove('active'));
-            document.getElementById(tabId).classList.add('active');
-            
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.className = "nav-btn w-full text-left px-4 py-3 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors";
+            // 为旧面板添加退出动画类（可选，如果需要更复杂的退出效果）
+            document.querySelectorAll('.tool-panel').forEach(el => {
+                el.classList.remove('active');
             });
-            document.getElementById('nav-' + tabId).className = "nav-btn active w-full text-left px-4 py-3 rounded-lg bg-blue-50 text-blue-700 font-medium transition-colors";
+            
+            // 延迟极短时间添加 active 类，触发 CSS 动画
+            setTimeout(() => {
+                document.getElementById(tabId).classList.add('active');
+            }, 10);
+            
+            // 更新左侧按钮样式
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.className = "nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium";
+            });
+            document.getElementById('nav-' + tabId).className = "nav-btn active w-full text-left px-4 py-3 rounded-lg text-blue-700 font-semibold";
         }
 
         // 通用下载函数
@@ -228,19 +297,50 @@
         // 配置 PDF.js 的 worker
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
-        // --- 1. 年龄计算器 ---
-        function calculateAge() {
-            const birthDateStr = document.getElementById('birth-date').value;
-            if (!birthDateStr) return alert('请先选择出生日期！');
-            const birthDate = new Date(birthDateStr);
-            const today = new Date();
-            let age = today.getFullYear() - birthDate.getFullYear();
-            const m = today.getMonth() - birthDate.getMonth();
-            if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
-                age--; // 生日没过，减一岁
+        // --- 1. 时间计算器 ---
+        function calculateTimeDiff() {
+            const startStr = document.getElementById('start-time').value;
+            const endStr = document.getElementById('end-time').value;
+            
+            if (!startStr || !endStr) {
+                return alert('请完整选择开始和结束时间！');
             }
-            const resultDiv = document.getElementById('age-result');
-            resultDiv.innerHTML = `<span class="text-gray-700">您当前的周岁年龄是：<strong class="text-blue-600 text-3xl ml-2">${age}</strong> 岁</span>`;
+
+            const startTime = new Date(startStr).getTime();
+            const endTime = new Date(endStr).getTime();
+
+            if (startTime > endTime) {
+                return alert('结束时间必须大于或等于开始时间！');
+            }
+
+            const diffInMilliseconds = endTime - startTime;
+            const unit = document.getElementById('time-unit').value;
+            
+            let resultValue = 0;
+            let unitLabel = '';
+
+            switch (unit) {
+                case 'days':
+                    // 精确到小数点后两位
+                    resultValue = (diffInMilliseconds / (1000 * 60 * 60 * 24)).toFixed(2);
+                    unitLabel = '天';
+                    break;
+                case 'hours':
+                    resultValue = (diffInMilliseconds / (1000 * 60 * 60)).toFixed(2);
+                    unitLabel = '小时';
+                    break;
+                case 'minutes':
+                    resultValue = (diffInMilliseconds / (1000 * 60)).toFixed(1);
+                    unitLabel = '分钟';
+                    break;
+                case 'seconds':
+                    resultValue = Math.floor(diffInMilliseconds / 1000);
+                    unitLabel = '秒';
+                    break;
+            }
+
+            const resultDiv = document.getElementById('time-result');
+            resultDiv.innerHTML = `<span class="text-gray-700">相差：<strong class="text-blue-600 text-3xl ml-2">${resultValue}</strong> ${unitLabel}</span>`;
             resultDiv.classList.remove('hidden');
         }
 
