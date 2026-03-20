@@ -137,7 +137,7 @@
     <main class="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
         <div class="flex items-center justify-between mb-8">
             <h2 class="text-2xl font-bold text-white">工具列表</h2>
-            <span class="text-sm text-gray-400">共 10 个工具</span>
+            <span class="text-sm text-gray-400">共 13 个工具</span>
         </div>
 
         <!-- 瀑布流网格布局 (调整为每行3个) -->
@@ -301,6 +301,20 @@
                 <div class="flex gap-2">
                     <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">媒体</span>
                     <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">动图</span>
+                </div>
+            </div>
+
+            <!-- 卡片 13：扫码链接WiFi -->
+            <div onclick="openTool('tool-wifi', '📶 扫码链接WiFi')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-2xl group-hover:bg-blue-500/20 transition-colors">📶</div>
+                    <span class="px-2 py-1 text-[10px] font-bold bg-green-500/20 text-green-400 rounded">便捷</span>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">扫码链接 WiFi</h3>
+                <p class="text-sm text-gray-400 mb-4 line-clamp-2">生成专属 WiFi 二维码，朋友来访手机一扫即连，免去报密码烦恼。</p>
+                <div class="flex gap-2">
+                    <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">网络</span>
+                    <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">工具</span>
                 </div>
             </div>
 
@@ -503,6 +517,52 @@
             </div>
         </section>
 
+        <!-- 13. 扫码链接WiFi -->
+        <section id="tool-wifi" class="tool-panel">
+            <div class="space-y-5">
+                <div class="flex items-start sm:items-center justify-between bg-blue-900/20 p-3 rounded-lg border border-blue-800/50 gap-4">
+                    <span class="text-sm text-blue-200">输入网络信息生成二维码，手机一扫即可自动连接 WiFi。</span>
+                    <button onclick="document.getElementById('wifi-help').classList.toggle('hidden')" class="shrink-0 w-6 h-6 rounded-full bg-blue-500/20 text-blue-400 flex items-center justify-center font-bold border border-blue-500/30 hover:bg-blue-500 hover:text-white transition-colors focus:outline-none" title="查看使用说明">!</button>
+                </div>
+                
+                <!-- 详细说明折叠面板 -->
+                <div id="wifi-help" class="hidden bg-gray-800 border border-gray-700 p-4 rounded-xl shadow-inner mt-2">
+                    <h4 class="font-bold text-white mb-2 text-sm">如何使用扫码连接？</h4>
+                    <ul class="text-sm text-gray-300 space-y-2 list-disc pl-4">
+                        <li><strong>苹果 (iOS):</strong> 直接打开系统自带相机，对准二维码，屏幕会弹出“加入网络”提示，点击即可。</li>
+                        <li><strong>安卓 (Android):</strong> 打开系统相机的“扫一扫”，或使用微信扫一扫，点击弹出的连接提示即可。</li>
+                        <li class="text-red-400 text-xs mt-2 list-none -ml-4">⚠️ 注意：请确保输入的 WiFi 名称(SSID)和密码大小写完全一致。</li>
+                    </ul>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">WiFi 名称 (SSID) <span class="text-red-400">*</span></label>
+                    <input type="text" id="wifi-ssid" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl p-3 border focus:ring-2 focus:ring-primary outline-none" placeholder="输入 WiFi 名称 (必填)">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">WiFi 密码</label>
+                    <input type="text" id="wifi-password" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl p-3 border focus:ring-2 focus:ring-primary outline-none" placeholder="输入 WiFi 密码 (如无密码可留空)">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">加密方式</label>
+                    <select id="wifi-encryption" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl p-3 border focus:ring-2 focus:ring-primary outline-none">
+                        <option value="WPA" selected>WPA/WPA2/WPA3 (最常见)</option>
+                        <option value="WEP">WEP (老旧路由器)</option>
+                        <option value="nopass">无密码</option>
+                    </select>
+                </div>
+                
+                <div class="flex gap-4">
+                    <button onclick="generateWifiQR()" class="bg-primary text-white px-6 py-3 rounded-xl hover:bg-indigo-600 font-medium transition-colors flex-1">生成连接二维码</button>
+                    <button onclick="saveWifiQR()" id="wifi-save-btn" class="bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-500 font-medium transition-colors hidden">保存二维码</button>
+                </div>
+                
+                <div class="mt-6 flex justify-center">
+                    <div id="wifi-qrcode-container" class="p-4 bg-white rounded-xl hidden shadow-lg"></div>
+                </div>
+            </div>
+        </section>
+
             </div>
         </div>
     </div>
@@ -590,9 +650,31 @@
             }
         }
 
-        // --- 0. 页面入场动画 (逐个缓慢显示) ---
+        // --- 0. 页面入场动画与自动排序 ---
         document.addEventListener('DOMContentLoaded', () => {
-            const cards = document.querySelectorAll('.tool-card');
+            const grid = document.getElementById('card-grid');
+            let cards = Array.from(document.querySelectorAll('.tool-card'));
+            
+            // 获取点击次数统计
+            let toolClicks = JSON.parse(localStorage.getItem('tool_clicks')) || {};
+
+            // 为每张卡片解析出对应的 tool ID 并按点击次数倒序排列
+            cards.forEach((card, idx) => {
+                let idMatch = card.getAttribute('onclick')?.match(/openTool\('([^']+)'/);
+                if (!idMatch) idMatch = card.innerHTML.match(/openTool\('([^']+)'/);
+                card.dataset.id = idMatch ? idMatch[1] : 'unknown';
+                card.dataset.origIdx = idx; // 记录原始顺序
+            });
+
+            cards.sort((a, b) => {
+                const countA = toolClicks[a.dataset.id] || 0;
+                const countB = toolClicks[b.dataset.id] || 0;
+                if (countB !== countA) return countB - countA;
+                return a.dataset.origIdx - b.dataset.origIdx; // 次数相同保持原序
+            });
+
+            // 重新追加到网格中完成 DOM 排序
+            cards.forEach(card => grid.appendChild(card));
             
             cards.forEach((card, index) => {
                 // 每个卡片按顺序逐个出现，延迟间隔拉长到 120ms，显得更有条不紊
@@ -619,6 +701,11 @@
         const modalContent = modal.querySelector('.modal-content');
         
         function openTool(tabId, title) {
+            // 记录点击次数用于智能排序
+            let clicks = JSON.parse(localStorage.getItem('tool_clicks')) || {};
+            clicks[tabId] = (clicks[tabId] || 0) + 1;
+            localStorage.setItem('tool_clicks', JSON.stringify(clicks));
+
             // 隐藏所有工具面板
             document.querySelectorAll('.tool-panel').forEach(el => el.classList.remove('active'));
             // 显示目标面板
@@ -1070,6 +1157,89 @@
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
+        }
+
+        // --- 13. 扫码链接WiFi ---
+        let wifiQrcode = null;
+        function generateWifiQR() {
+            const ssid = document.getElementById('wifi-ssid').value.trim();
+            const password = document.getElementById('wifi-password').value;
+            const encryption = document.getElementById('wifi-encryption').value;
+            
+            if (!ssid) return alert('请输入 WiFi 名称！');
+            
+            // 拼接标准 WiFi 二维码格式
+            let text = `WIFI:T:${encryption};S:${ssid};P:${password};;`;
+            if (encryption === 'nopass') {
+                text = `WIFI:T:nopass;S:${ssid};P:;;`;
+            }
+
+            const container = document.getElementById('wifi-qrcode-container');
+            container.innerHTML = ''; 
+            container.classList.remove('hidden');
+            
+            wifiQrcode = new QRCode(container, {
+                text: text, width: 220, height: 220,
+                colorDark : "#111827", colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+            
+            document.getElementById('wifi-save-btn').classList.remove('hidden');
+        }
+
+        function saveWifiQR() {
+            const container = document.getElementById('wifi-qrcode-container');
+            const canvas = container.querySelector('canvas');
+            const img = container.querySelector('img');
+            const ssid = document.getElementById('wifi-ssid').value.trim();
+            
+            let qrUrl = '';
+            if (canvas) {
+                qrUrl = canvas.toDataURL('image/png');
+            } else if (img) {
+                qrUrl = img.src;
+            }
+            
+            if (!qrUrl) {
+                return alert('请先生成二维码！');
+            }
+
+            // 创建一个新的画布来绘制带文字的二维码
+            const finalCanvas = document.createElement('canvas');
+            const ctx = finalCanvas.getContext('2d');
+            const qrImage = new Image();
+            
+            qrImage.onload = function() {
+                // 设置画布尺寸：二维码宽度，高度增加留出写文字的空间 (比如增加40px)
+                const padding = 20;
+                const textHeight = 40;
+                finalCanvas.width = qrImage.width + (padding * 2);
+                finalCanvas.height = qrImage.height + (padding * 2) + textHeight;
+                
+                // 填充白色背景
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, finalCanvas.width, finalCanvas.height);
+                
+                // 绘制二维码图片，居中
+                ctx.drawImage(qrImage, padding, padding);
+                
+                // 绘制底部说明文字
+                ctx.fillStyle = '#111827'; // 深色文字
+                ctx.font = 'bold 16px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                const text = `扫码链接WIFI - ${ssid}`;
+                // 将文字画在二维码下方的中心位置
+                ctx.fillText(text, finalCanvas.width / 2, finalCanvas.height - (padding + textHeight / 2) + 10);
+                
+                // 触发下载
+                const a = document.createElement('a');
+                a.href = finalCanvas.toDataURL('image/png');
+                a.download = `WiFi_${ssid}.png`;
+                a.click();
+            };
+            
+            qrImage.src = qrUrl;
         }
     </script>
 </body>
