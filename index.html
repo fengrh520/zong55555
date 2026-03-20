@@ -1,301 +1,671 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HTML 工具集 - 纯本地</title>
+    <title>HTML Tools - 轻量级工具集</title>
     
-    <!-- 引入 Tailwind CSS 进行页面美化 -->
+    <!-- 引入 Tailwind CSS 并开启深色模式支持 -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        darkBg: '#0f172a', /* 深蓝背景 */
+                        cardBg: '#1e293b', /* 卡片背景 */
+                        cardHover: '#334155', /* 卡片悬浮 */
+                        primary: '#6366f1', /* 主题蓝 */
+                    }
+                }
+            }
+        }
+    </script>
     
-    <!-- === 各种前端开源库，用于本地实现功能 === -->
-    <!-- qrcode.js 用于生成二维码 -->
+    <!-- === 各种前端开源库 === -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- browser-image-compression 用于图片压缩 -->
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
-    <!-- mammoth.js 用于解析 Word (docx) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
-    <!-- html2pdf.js 用于将 HTML 打印成 PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <!-- pdf.js 用于解析 PDF -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-    <!-- jszip.js 用于打包多张图片为 zip -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
-    <!-- marked.js 用于解析 Markdown -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
-    <!-- SheetJS (xlsx) 用于处理 Excel -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- 新增：tesseract.js 用于纯本地 OCR 识别 -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- 新增：ffmpeg.wasm 用于纯本地视频处理 -->
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
 
     <style>
-        /* 隐藏未激活的工具面板 */
-        .tool-panel { 
-            display: none; 
-            opacity: 0;
-            transform: translateY(10px);
-            transition: opacity 0.3s ease, transform 0.3s ease;
+        body {
+            background-color: #0b0f19;
+            color: #e2e8f0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
         }
-        .tool-panel.active { 
-            display: block; 
+        
+        /* 滚动条美化 */
+        ::-webkit-scrollbar { width: 8px; }
+        ::-webkit-scrollbar-track { background: #0b0f19; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+        /* 卡片悬浮动画 */
+        .tool-card {
+            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1); /* 动画速度进一步减慢到0.7秒 */
+            border: 1px solid #1e293b;
+            /* 初始状态：向下偏移且透明，等待 JS 触发动画 */
+            opacity: 0;
+            transform: translateY(50px); /* 进一步增加下沉距离，显得更飘逸 */
+        }
+        
+        /* 当加上 show 类时触发进入动画 */
+        .tool-card.show {
             opacity: 1;
             transform: translateY(0);
-            animation: fadeIn 0.4s ease-out forwards;
-        }
-        
-        @keyframes fadeIn {
-            from {
-                opacity: 0;
-                transform: translateY(15px);
-            }
-            to {
-                opacity: 1;
-                transform: translateY(0);
-            }
         }
 
-        /* 滚动条美化 */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-        
-        /* 整体渐变背景与玻璃拟态效果 */
-        body {
-            background: linear-gradient(135deg, #f0fdfa 0%, #f8fafc 100%);
+        .tool-card:hover {
+            transform: translateY(-6px);
+            border-color: #3b82f6;
+            box-shadow: 0 12px 30px -5px rgba(59, 130, 246, 0.25);
+            background-color: #1e293b;
         }
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
+
+        /* 模态弹窗（工作区）动画 */
+        #workspace-modal {
+            transition: opacity 0.3s ease;
+        }
+        .modal-content {
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
         }
         
-        /* 按钮悬浮效果增强 */
-        .nav-btn {
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        .tool-panel { display: none; }
+        .tool-panel.active { display: block; }
+
+        /* 全局拖拽遮罩层 */
+        #dropzone-overlay {
+            transition: all 0.3s ease;
+            pointer-events: none;
         }
-        .nav-btn:hover:not(.active) {
-            transform: translateX(4px);
-            background-color: #f1f5f9;
+        body.drag-active #dropzone-overlay {
+            opacity: 1;
+            z-index: 9999;
         }
-        .nav-btn.active {
-            background: linear-gradient(to right, #eff6ff, #e0f2fe);
-            border-left: 4px solid #3b82f6;
-            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.02);
+        
+        /* 隐藏文件输入框，用更美观的拖拽区代替 */
+        .file-drop-area {
+            border: 2px dashed #475569;
+            transition: all 0.3s ease;
+        }
+        .file-drop-area:hover, .file-drop-area.drag-over {
+            border-color: #6366f1;
+            background-color: rgba(99, 102, 241, 0.1);
         }
     </style>
 </head>
-<body class="flex h-screen overflow-hidden text-gray-800 font-sans">
-    
-    <!-- 左侧导航栏 -->
-    <aside class="w-64 glass-panel border-r border-gray-200/60 flex flex-col z-10 relative">
-        <div class="p-6 border-b border-gray-100">
-            <h1 class="text-xl font-extrabold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 tracking-tight">🧰 前端工具集</h1>
-            <p class="text-xs text-slate-500 mt-2 font-medium">纯本地计算 · 保护隐私</p>
+<body class="min-h-screen flex flex-col">
+    <!-- 全局拖拽遮罩 -->
+    <div id="dropzone-overlay" class="fixed inset-0 bg-blue-900/40 backdrop-blur-sm opacity-0 flex flex-col items-center justify-center">
+        <div class="w-32 h-32 bg-blue-500 rounded-full animate-bounce flex items-center justify-center mb-6 shadow-2xl shadow-blue-500/50">
+            <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
         </div>
-        <nav class="flex-1 overflow-y-auto p-4 space-y-1.5" id="nav-menu">
-            <button onclick="switchTab('tool-time')" id="nav-tool-time" class="nav-btn active w-full text-left px-4 py-3 rounded-lg text-blue-700 font-semibold">⏳ 时间计算器</button>
-            <button onclick="switchTab('tool-qr')" id="nav-tool-qr" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">🔗 链接二维码生成</button>
-            <button onclick="switchTab('tool-ic')" id="nav-tool-ic" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">🖼️ 图片压缩</button>
-            <button onclick="switchTab('tool-w2p')" id="nav-tool-w2p" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">📄 Word转PDF</button>
-            <button onclick="switchTab('tool-p2i')" id="nav-tool-p2i" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">🖼️ PDF转图片</button>
-            <button onclick="switchTab('tool-i2i')" id="nav-tool-i2i" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">🔄 png/jpg转ico</button>
-            <button onclick="switchTab('tool-t2j')" id="nav-tool-t2j" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">📋 txt转json</button>
-            <button onclick="switchTab('tool-m2w')" id="nav-tool-m2w" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">📝 markdown转Word</button>
-            <button onclick="switchTab('tool-m2h')" id="nav-tool-m2h" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">🌐 markdown转HTML</button>
-            <button onclick="switchTab('tool-e2c')" id="nav-tool-e2c" class="nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium">📊 Excel转CSV</button>
-        </nav>
-    </aside>
+        <h2 class="text-4xl font-bold text-white tracking-widest drop-shadow-lg">松开鼠标，释放魔法</h2>
+        <p class="text-blue-200 mt-4 text-lg">系统将自动识别文件并启动对应工具</p>
+    </div>
+    
+    <!-- 顶部导航条 -->
+    <header class="border-b border-gray-800 bg-[#0f172a]/80 backdrop-blur-md sticky top-0 z-40">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+                    <span class="text-white font-bold text-xl">HT</span>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-wide">HTML Tools</h1>
+                    <p class="text-xs text-gray-400">轻量级单文件前端工具集</p>
+                </div>
+            </div>
+            <div class="flex gap-4">
+                <a href="#" class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm font-medium transition-colors border border-gray-700">⭐ GitHub</a>
+            </div>
+        </div>
+    </header>
 
-    <!-- 右侧工作区 -->
-    <main class="flex-1 p-8 overflow-y-auto relative">
+    <!-- 主体内容：卡片网格 -->
+    <main class="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
+        <div class="flex items-center justify-between mb-8">
+            <h2 class="text-2xl font-bold text-white">工具列表</h2>
+            <span class="text-sm text-gray-400">共 10 个工具</span>
+        </div>
+
+        <!-- 瀑布流网格布局 (调整为每行3个) -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="card-grid">
+            
+            <!-- 卡片 1：时间计算器 -->
+            <div onclick="openTool('tool-time', '⏳ 时间计算器')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-2xl group-hover:bg-blue-500/20 transition-colors">⏳</div>
+                    <span class="px-2 py-1 text-[10px] font-bold bg-orange-500/20 text-orange-400 rounded">常用</span>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">时间计算器</h3>
+                <p class="text-sm text-gray-400 mb-4 line-clamp-2">精确计算两个日期时间之间的差值，支持秒、分、时、天。</p>
+                <div class="flex gap-2">
+                    <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">日期</span>
+                    <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">计算</span>
+                </div>
+            </div>
+
+            <!-- 卡片 2：二维码生成 -->
+            <div class="tool-card bg-cardBg rounded-2xl p-6 relative overflow-hidden group">
+                <div class="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
+                <div class="flex justify-between items-start mb-4 relative z-10">
+                    <div class="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-2xl group-hover:bg-green-500/20 transition-colors">🔗</div>
+                    <button onclick="openTool('tool-qr', '🔗 链接二维码生成')" class="text-xs text-gray-400 hover:text-white transition-colors bg-gray-800/50 px-2 py-1 rounded">放大</button>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 relative z-10">二维码生成器</h3>
+                
+                <!-- 卡片内部直接交互区 -->
+                <div class="relative z-10 mt-3">
+                    <div class="flex gap-2">
+                        <input type="text" id="quick-qr-input" placeholder="输入网址/文本" class="flex-1 bg-gray-800 border border-gray-700 text-white text-sm rounded-lg px-3 py-2 focus:ring-1 focus:ring-green-500 outline-none" onkeypress="if(event.key==='Enter') generateQuickQR()">
+                        <button onclick="generateQuickQR()" class="bg-green-600 hover:bg-green-500 text-white px-3 py-2 rounded-lg text-sm transition-colors">生成</button>
+                    </div>
+                    <!-- 快速生成的二维码展示区 -->
+                    <div id="quick-qr-result" class="mt-3 flex justify-center hidden bg-white p-2 rounded-xl"></div>
+                </div>
+            </div>
+
+            <!-- 卡片 3：图片压缩 -->
+            <div onclick="openTool('tool-ic', '🖼️ 图片压缩')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-2xl group-hover:bg-purple-500/20 transition-colors">🖼️</div>
+                    <span class="px-2 py-1 text-[10px] font-bold bg-blue-500/20 text-blue-400 rounded">极速</span>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">图片压缩</h3>
+                <p class="text-sm text-gray-400 mb-4 line-clamp-2">在浏览器本地智能压缩图片体积，保护隐私不上传。</p>
+                <div class="flex gap-2">
+                    <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">图像处理</span>
+                </div>
+            </div>
+
+            <!-- 卡片 4：Word转PDF -->
+            <div onclick="openTool('tool-w2p', '📄 Word 转 PDF')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center text-2xl group-hover:bg-red-500/20 transition-colors">📄</div>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 group-hover:text-red-400 transition-colors">Word 转 PDF</h3>
+                <p class="text-sm text-gray-400 mb-4 line-clamp-2">将 .docx 文档纯前端转换为 PDF 文件下载。</p>
+                <div class="flex gap-2">
+                    <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">文档格式</span>
+                </div>
+            </div>
+
+            <!-- 卡片 5：PDF转图片 -->
+            <div onclick="openTool('tool-p2i', '🖼️ PDF 转 图片')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-2xl group-hover:bg-orange-500/20 transition-colors">🖼️</div>
+                    <span class="px-2 py-1 text-[10px] font-bold bg-blue-500/20 text-blue-400 rounded">多页</span>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 group-hover:text-orange-400 transition-colors">PDF 转 图片</h3>
+                <p class="text-sm text-gray-400 mb-4 line-clamp-2">将 PDF 每页转换为图片，多页自动打包 ZIP。</p>
+                <div class="flex gap-2">
+                    <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">文档转换</span>
+                </div>
+            </div>
+
+            <!-- 卡片 6：图片转ico -->
+            <div onclick="openTool('tool-i2i', '🔄 图片 转 ico')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-yellow-500/10 flex items-center justify-center text-2xl group-hover:bg-yellow-500/20 transition-colors">🔄</div>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 group-hover:text-yellow-400 transition-colors">图片 转 ico</h3>
+                <p class="text-sm text-gray-400 mb-4 line-clamp-2">将 PNG/JPG 图片转换为 Windows 图标格式 .ico。</p>
+                <div class="flex gap-2">
+                    <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">图标</span>
+                </div>
+            </div>
+
+            <!-- 卡片 7：txt转json -->
+            <div onclick="openTool('tool-t2j', '📋 txt 转 json')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center text-2xl group-hover:bg-cyan-500/20 transition-colors">📋</div>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 group-hover:text-cyan-400 transition-colors">txt 转 json</h3>
+                <p class="text-sm text-gray-400 mb-4 line-clamp-2">将纯文本文件按行分割，转换为结构化 JSON 数据。</p>
+                <div class="flex gap-2">
+                    <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">数据</span>
+                </div>
+            </div>
+
+            <!-- 卡片 8：markdown转Word -->
+            <div onclick="openTool('tool-m2w', '📝 markdown 转 Word')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-2xl group-hover:bg-blue-500/20 transition-colors">📝</div>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 group-hover:text-blue-400 transition-colors">markdown 转 Word</h3>
+                <p class="text-sm text-gray-400 mb-4 line-clamp-2">将 Markdown 格式文本导出为 Word 文档 (.doc)。</p>
+                <div class="flex gap-2">
+                    <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">文档</span>
+                </div>
+            </div>
+
+            <!-- 卡片 9：markdown转HTML -->
+            <div onclick="openTool('tool-m2h', '🌐 markdown 转 HTML')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-2xl group-hover:bg-green-500/20 transition-colors">🌐</div>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 group-hover:text-green-400 transition-colors">markdown 转 HTML</h3>
+                <p class="text-sm text-gray-400 mb-4 line-clamp-2">将 Markdown 格式文本转换为完整的 HTML 网页。</p>
+                <div class="flex gap-2">
+                    <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">网页</span>
+                </div>
+            </div>
+
+            <!-- 卡片 10：Excel转CSV -->
+            <div onclick="openTool('tool-e2c', '📊 Excel 转 CSV')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-2xl group-hover:bg-purple-500/20 transition-colors">📊</div>
+                    <span class="px-2 py-1 text-[10px] font-bold bg-green-500/20 text-green-400 rounded">表格</span>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 group-hover:text-purple-400 transition-colors">Excel 转 CSV</h3>
+                <p class="text-sm text-gray-400 mb-4 line-clamp-2">将 Excel 表格文件转换为 CSV 格式，便于数据交换。</p>
+                <div class="flex gap-2">
+                    <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">表格</span>
+                </div>
+            </div>
+
+            <!-- 卡片 11：图片提取文字 (OCR) -->
+            <div onclick="openTool('tool-ocr', '🔍 图片提取文字')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-fuchsia-500/10 flex items-center justify-center text-2xl group-hover:bg-fuchsia-500/20 transition-colors">🔍</div>
+                    <span class="px-2 py-1 text-[10px] font-bold bg-purple-500/20 text-purple-400 rounded">AI 黑科技</span>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 group-hover:text-fuchsia-400 transition-colors">图片提取文字</h3>
+                <p class="text-sm text-gray-400 mb-4 line-clamp-2">浏览器本地运行 OCR 模型，离线提取图片中的中英文字。</p>
+                <div class="flex gap-2">
+                    <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">OCR</span>
+                    <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">效率</span>
+                </div>
+            </div>
+
+            <!-- 卡片 12：视频转 GIF -->
+            <div onclick="openTool('tool-v2g', '🎬 视频转 GIF')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center text-2xl group-hover:bg-teal-500/20 transition-colors">🎬</div>
+                    <span class="px-2 py-1 text-[10px] font-bold bg-teal-500/20 text-teal-400 rounded">WASM</span>
+                </div>
+                <h3 class="text-lg font-bold text-white mb-2 group-hover:text-teal-400 transition-colors">视频转 GIF</h3>
+                <p class="text-sm text-gray-400 mb-4 line-clamp-2">利用 FFmpeg.wasm 纯前端处理视频，截取生成表情包。</p>
+                <div class="flex gap-2">
+                    <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">媒体</span>
+                    <span class="px-2 py-1 text-xs bg-gray-800 text-gray-300 rounded-md">动图</span>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- 弹窗工作区 (点击卡片后弹出) -->
+    <div id="workspace-modal" class="fixed inset-0 z-50 flex items-center justify-center opacity-0 pointer-events-none bg-black/60 backdrop-blur-sm">
+        <div class="modal-content bg-cardBg w-full max-w-3xl rounded-2xl shadow-2xl border border-gray-700 flex flex-col max-h-[90vh] transform scale-95">
+            <!-- 弹窗头部 -->
+            <div class="flex items-center justify-between p-6 border-b border-gray-800">
+                <h2 id="modal-title" class="text-xl font-bold text-white">工具名称</h2>
+                <button onclick="closeTool()" class="text-gray-400 hover:text-white p-2 rounded-lg hover:bg-gray-800 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
+                </button>
+            </div>
+            
+            <!-- 弹窗内容区 (存放具体的工具面板) -->
+            <div class="p-8 overflow-y-auto flex-1">
         
-        <!-- 1. 时间计算器 -->
-        <section id="tool-time" class="tool-panel active max-w-2xl mx-auto glass-panel p-8 rounded-2xl">
-            <h2 class="text-2xl font-bold mb-6 text-slate-800">⏳ 时间计算器</h2>
+        <!-- 1. 时间计算器 (修改为深色主题适配) -->
+        <section id="tool-time" class="tool-panel">
             <div class="space-y-5">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">开始时间</label>
-                    <input type="datetime-local" id="start-time" step="1" class="w-full border-slate-200 rounded-xl shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white/80">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">开始时间</label>
+                    <input type="datetime-local" id="start-time" step="1" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl p-3 border focus:ring-2 focus:ring-primary outline-none">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">结束时间</label>
-                    <input type="datetime-local" id="end-time" step="1" class="w-full border-slate-200 rounded-xl shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white/80">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">结束时间</label>
+                    <input type="datetime-local" id="end-time" step="1" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl p-3 border focus:ring-2 focus:ring-primary outline-none">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">计算单位</label>
-                    <select id="time-unit" class="w-full border-slate-200 rounded-xl shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white/80">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">计算单位</label>
+                    <select id="time-unit" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl p-3 border focus:ring-2 focus:ring-primary outline-none">
                         <option value="days" selected>天 (Days)</option>
                         <option value="hours">小时 (Hours)</option>
                         <option value="minutes">分钟 (Minutes)</option>
                         <option value="seconds">秒 (Seconds)</option>
                     </select>
                 </div>
-                <button onclick="calculateTimeDiff()" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl hover:shadow-lg hover:-translate-y-0.5 font-medium transition-all duration-200 w-full sm:w-auto">计算时间差</button>
-                <div id="time-result" class="mt-6 p-5 bg-blue-50/80 border border-blue-100 rounded-xl hidden transition-all duration-300"></div>
+                <button onclick="calculateTimeDiff()" class="bg-primary text-white px-6 py-3 rounded-xl hover:bg-indigo-600 font-medium transition-colors w-full">计算时间差</button>
+                <div id="time-result" class="mt-6 p-5 bg-blue-900/20 border border-blue-800/50 rounded-xl hidden"></div>
             </div>
         </section>
 
-        <!-- 2. 二维码生成器 -->
-        <section id="tool-qr" class="tool-panel max-w-2xl mx-auto glass-panel p-8 rounded-2xl">
-            <h2 class="text-2xl font-bold mb-6 text-slate-800">🔗 链接二维码生成器</h2>
+        <!-- 2. 二维码生成器 (修改为深色主题适配) -->
+        <section id="tool-qr" class="tool-panel">
             <div class="space-y-5">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">输入文本或链接</label>
-                    <textarea id="qr-text" rows="3" class="w-full border-slate-200 rounded-xl shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none transition-all bg-white/80" placeholder="例如：https://tools.karing.app/"></textarea>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">输入文本或链接</label>
+                    <textarea id="qr-text" rows="3" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl p-3 border focus:ring-2 focus:ring-primary outline-none" placeholder="例如：https://tools.karing.app/"></textarea>
                 </div>
-                <button onclick="generateQR()" class="bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-6 py-3 rounded-xl hover:shadow-lg hover:-translate-y-0.5 font-medium transition-all duration-200 w-full sm:w-auto">生成二维码</button>
+                <button onclick="generateQR()" class="bg-primary text-white px-6 py-3 rounded-xl hover:bg-indigo-600 font-medium transition-colors w-full">生成二维码</button>
                 <div class="mt-6 flex justify-center">
-                    <div id="qrcode-container" class="p-4 bg-white border border-slate-100 rounded-2xl hidden shadow-md transition-all duration-300 hover:shadow-lg"></div>
+                    <!-- 二维码容器强制白色背景以保证扫码率 -->
+                    <div id="qrcode-container" class="p-4 bg-white rounded-xl hidden shadow-lg"></div>
                 </div>
             </div>
         </section>
 
         <!-- 3. 图片压缩 -->
-        <section id="tool-ic" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+        <section id="tool-ic" class="tool-panel">
             <h2 class="text-2xl font-bold mb-6">🖼️ 图片压缩工具</h2>
             <div class="space-y-5">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">选择要压缩的图片 (纯本地处理，保护隐私)</label>
-                    <input type="file" id="ic-file" accept="image/*" class="w-full border-gray-300 rounded-lg shadow-sm p-2 border">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">选择要压缩的图片 (纯本地处理，保护隐私)</label>
+                    <input type="file" id="ic-file" accept="image/*" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl shadow p-2 border focus:ring-2 focus:ring-primary outline-none">
                 </div>
-                <button onclick="compressImage()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">开始压缩并下载</button>
-                <div id="ic-status" class="mt-4 text-sm text-gray-600 font-medium"></div>
+                <button onclick="compressImage()" class="bg-primary text-white px-6 py-3 rounded-xl hover:bg-indigo-600 font-medium transition-colors">开始压缩并下载</button>
+                <div id="ic-status" class="mt-4 text-sm text-gray-300 font-medium"></div>
             </div>
         </section>
 
         <!-- 4. Word转PDF -->
-        <section id="tool-w2p" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+        <section id="tool-w2p" class="tool-panel max-w-2xl mx-auto bg-cardBg p-8 rounded-2xl shadow-lg border border-gray-700">
             <h2 class="text-2xl font-bold mb-6">📄 Word 转 PDF</h2>
             <div class="space-y-5">
-                <p class="text-sm text-gray-500 bg-yellow-50 p-3 rounded border border-yellow-200">提示：此为纯前端实现，复杂排版可能会部分丢失。适用于文字为主的简单文档。</p>
+                <p class="text-sm text-gray-400 bg-yellow-900/20 p-3 rounded border border-yellow-800">提示：此为纯前端实现，复杂排版可能会部分丢失。适用于文字为主的简单文档。</p>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">选择 Word 文档 (.docx)</label>
-                    <input type="file" id="w2p-file" accept=".docx" class="w-full border-gray-300 rounded-lg shadow-sm p-2 border">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">选择 Word 文档 (.docx)</label>
+                    <input type="file" id="w2p-file" accept=".docx" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl shadow p-2 border focus:ring-2 focus:ring-primary outline-none">
                 </div>
-                <button onclick="convertWord2Pdf()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">转换为 PDF</button>
-                <div id="w2p-status" class="mt-4 text-sm text-gray-600 font-medium"></div>
+                <button onclick="convertWord2Pdf()" class="bg-primary text-white px-6 py-3 rounded-xl hover:bg-indigo-600 font-medium transition-colors">转换为 PDF</button>
+                <div id="w2p-status" class="mt-4 text-sm text-gray-300 font-medium"></div>
             </div>
         </section>
 
         <!-- 5. PDF转图片 -->
-        <section id="tool-p2i" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+        <section id="tool-p2i" class="tool-panel max-w-2xl mx-auto bg-cardBg p-8 rounded-2xl shadow-lg border border-gray-700">
             <h2 class="text-2xl font-bold mb-6">🖼️ PDF 转 图片</h2>
             <div class="space-y-5">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">选择 PDF 文件 (多页将打包为 ZIP)</label>
-                    <input type="file" id="p2i-file" accept="application/pdf" class="w-full border-gray-300 rounded-lg shadow-sm p-2 border">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">选择 PDF 文件 (多页将打包为 ZIP)</label>
+                    <input type="file" id="p2i-file" accept="application/pdf" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl shadow p-2 border focus:ring-2 focus:ring-primary outline-none">
                 </div>
-                <button onclick="convertPdf2Img()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">转换为图片包 (ZIP)</button>
-                <div id="p2i-status" class="mt-4 text-sm text-gray-600 font-medium"></div>
+                <button onclick="convertPdf2Img()" class="bg-primary text-white px-6 py-3 rounded-xl hover:bg-indigo-600 font-medium transition-colors">转换为图片包 (ZIP)</button>
+                <div id="p2i-status" class="mt-4 text-sm text-gray-300 font-medium"></div>
             </div>
         </section>
 
         <!-- 6. png/jpg转ico -->
-        <section id="tool-i2i" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+        <section id="tool-i2i" class="tool-panel max-w-2xl mx-auto bg-cardBg p-8 rounded-2xl shadow-lg border border-gray-700">
             <h2 class="text-2xl font-bold mb-6">🔄 图片 转 ico 图标</h2>
             <div class="space-y-5">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">选择要转换的图片 (PNG, JPG)</label>
-                    <input type="file" id="i2i-file" accept="image/png, image/jpeg, image/webp" class="w-full border-gray-300 rounded-lg shadow-sm p-2 border">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">选择要转换的图片 (PNG, JPG)</label>
+                    <input type="file" id="i2i-file" accept="image/png, image/jpeg, image/webp" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl shadow p-2 border focus:ring-2 focus:ring-primary outline-none">
                 </div>
-                <button onclick="convertImg2Ico()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">生成 .ico 图标</button>
-                <div id="i2i-status" class="mt-4 text-sm text-gray-600 font-medium"></div>
+                <button onclick="convertImg2Ico()" class="bg-primary text-white px-6 py-3 rounded-xl hover:bg-indigo-600 font-medium transition-colors">生成 .ico 图标</button>
+                <div id="i2i-status" class="mt-4 text-sm text-gray-300 font-medium"></div>
             </div>
         </section>
 
         <!-- 7. txt转json -->
-        <section id="tool-t2j" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+        <section id="tool-t2j" class="tool-panel max-w-2xl mx-auto bg-cardBg p-8 rounded-2xl shadow-lg border border-gray-700">
             <h2 class="text-2xl font-bold mb-6">📋 txt 转 json</h2>
             <div class="space-y-5">
-                <p class="text-sm text-gray-500 bg-gray-50 p-3 rounded border">默认逻辑：将 txt 文本按行分割，转换为 JSON 数组。</p>
+                <p class="text-sm text-gray-400 bg-gray-800/30 p-3 rounded border border-gray-700">默认逻辑：将 txt 文本按行分割，转换为 JSON 数组。</p>
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">选择 TXT 文件</label>
-                    <input type="file" id="t2j-file" accept=".txt" class="w-full border-gray-300 rounded-lg shadow-sm p-2 border">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">选择 TXT 文件</label>
+                    <input type="file" id="t2j-file" accept=".txt" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl shadow p-2 border focus:ring-2 focus:ring-primary outline-none">
                 </div>
-                <button onclick="convertTxt2Json()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">转换为 JSON</button>
-                <div id="t2j-status" class="mt-4 text-sm text-gray-600 font-medium"></div>
+                <button onclick="convertTxt2Json()" class="bg-primary text-white px-6 py-3 rounded-xl hover:bg-indigo-600 font-medium transition-colors">转换为 JSON</button>
+                <div id="t2j-status" class="mt-4 text-sm text-gray-300 font-medium"></div>
             </div>
         </section>
 
         <!-- 8. markdown转Word -->
-        <section id="tool-m2w" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+        <section id="tool-m2w" class="tool-panel max-w-2xl mx-auto bg-cardBg p-8 rounded-2xl shadow-lg border border-gray-700">
             <h2 class="text-2xl font-bold mb-6">📝 markdown 转 Word</h2>
             <div class="space-y-5">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">输入 Markdown 内容</label>
-                    <textarea id="m2w-text" rows="8" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 font-mono text-sm" placeholder="# 标题\n\n- 列表 1\n- 列表 2"></textarea>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">输入 Markdown 内容</label>
+                    <textarea id="m2w-text" rows="8" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl shadow p-3 border focus:ring-2 focus:ring-primary font-mono text-sm outline-none" placeholder="# 标题\n\n- 列表 1\n- 列表 2"></textarea>
                 </div>
-                <button onclick="convertMd2Word()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">导出为 Word (.doc)</button>
+                <button onclick="convertMd2Word()" class="bg-primary text-white px-6 py-3 rounded-xl hover:bg-indigo-600 font-medium transition-colors">导出为 Word (.doc)</button>
             </div>
         </section>
 
         <!-- 9. markdown转HTML -->
-        <section id="tool-m2h" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
+        <section id="tool-m2h" class="tool-panel max-w-2xl mx-auto bg-cardBg p-8 rounded-2xl shadow-lg border border-gray-700">
             <h2 class="text-2xl font-bold mb-6">🌐 markdown 转 HTML</h2>
             <div class="space-y-5">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">输入 Markdown 内容</label>
-                    <textarea id="m2h-text" rows="8" class="w-full border-gray-300 rounded-lg shadow-sm p-3 border focus:ring-2 focus:ring-blue-500 font-mono text-sm" placeholder="# 标题\n\n- 列表 1\n- 列表 2"></textarea>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">输入 Markdown 内容</label>
+                    <textarea id="m2h-text" rows="8" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl shadow p-3 border focus:ring-2 focus:ring-primary font-mono text-sm outline-none" placeholder="# 标题\n\n- 列表 1\n- 列表 2"></textarea>
                 </div>
-                <button onclick="convertMd2Html()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">导出为 HTML</button>
+                <button onclick="convertMd2Html()" class="bg-primary text-white px-6 py-3 rounded-xl hover:bg-indigo-600 font-medium transition-colors">导出为 HTML</button>
             </div>
         </section>
 
         <!-- 10. Excel转CSV -->
-        <section id="tool-e2c" class="tool-panel max-w-2xl mx-auto bg-white p-8 rounded-2xl shadow-sm border border-gray-100">
-            <h2 class="text-2xl font-bold mb-6">📊 Excel 转 CSV</h2>
+        <section id="tool-e2c" class="tool-panel">
             <div class="space-y-5">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-2">选择 Excel 文件 (.xlsx, .xls)</label>
-                    <input type="file" id="e2c-file" accept=".xlsx, .xls" class="w-full border-gray-300 rounded-lg shadow-sm p-2 border">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">选择 Excel 文件 (.xlsx, .xls)</label>
+                    <input type="file" id="e2c-file" accept=".xlsx, .xls" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl p-2 border">
                 </div>
-                <button onclick="convertExcel2Csv()" class="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 font-medium transition-colors">转换为 CSV</button>
-                <div id="e2c-status" class="mt-4 text-sm text-gray-600 font-medium"></div>
+                <button onclick="convertExcel2Csv()" class="bg-primary text-white px-6 py-3 rounded-xl hover:bg-indigo-600 font-medium transition-colors w-full">转换为 CSV</button>
+                <div id="e2c-status" class="mt-4 text-sm text-gray-400 font-medium"></div>
             </div>
         </section>
 
-    </main>
+        <!-- 11. 图片提取文字 (OCR) -->
+        <section id="tool-ocr" class="tool-panel">
+            <div class="space-y-5">
+                <p class="text-sm text-purple-200 bg-purple-900/30 p-3 rounded-lg border border-purple-700/50">首次识别需要下载约 20MB 的字库模型到浏览器缓存，请耐心等待。</p>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">选择包含文字的图片</label>
+                    <input type="file" id="ocr-file" accept="image/*" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl p-2 border">
+                </div>
+                <button onclick="extractTextFromImage()" id="ocr-btn" class="bg-primary text-white px-6 py-3 rounded-xl hover:bg-indigo-600 font-medium transition-colors w-full flex justify-center items-center gap-2">
+                    <span>开始识别文字</span>
+                </button>
+                <div id="ocr-status" class="mt-2 text-sm text-gray-400 font-medium"></div>
+                <textarea id="ocr-result" rows="6" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl p-3 border focus:ring-2 focus:ring-primary outline-none mt-4 hidden" placeholder="识别结果将显示在这里..."></textarea>
+            </div>
+        </section>
+
+        <!-- 12. 视频转 GIF -->
+        <section id="tool-v2g" class="tool-panel">
+            <div class="space-y-5">
+                <p class="text-sm text-teal-200 bg-teal-900/30 p-3 rounded-lg border border-teal-700/50">纯前端处理视频较耗内存，建议上传 10 秒内的小视频，如 MP4/WEBM。</p>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">选择视频文件</label>
+                    <input type="file" id="v2g-file" accept="video/*" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl p-2 border">
+                </div>
+                <div class="flex gap-4">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-400 mb-1">FPS (帧率)</label>
+                        <input type="number" id="v2g-fps" value="10" min="5" max="30" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl p-2 border outline-none">
+                    </div>
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-gray-400 mb-1">宽度 (像素)</label>
+                        <input type="number" id="v2g-width" value="320" min="100" max="800" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl p-2 border outline-none">
+                    </div>
+                </div>
+                <button onclick="convertVideoToGif()" id="v2g-btn" class="bg-primary text-white px-6 py-3 rounded-xl hover:bg-indigo-600 font-medium transition-colors w-full">生成 GIF 并下载</button>
+                <div id="v2g-status" class="mt-4 text-sm text-gray-400 font-medium"></div>
+            </div>
+        </section>
+
+            </div>
+        </div>
+    </div>
 
     <!-- === 核心 JavaScript 逻辑 === -->
     <script>
-        // --- 0. 公共函数 ---
-        // 切换左侧标签
-        function switchTab(tabId) {
-            // 为旧面板添加退出动画类（可选，如果需要更复杂的退出效果）
-            document.querySelectorAll('.tool-panel').forEach(el => {
-                el.classList.remove('active');
-            });
-            
-            // 延迟极短时间添加 active 类，触发 CSS 动画
-            setTimeout(() => {
-                document.getElementById(tabId).classList.add('active');
-            }, 10);
-            
-            // 更新左侧按钮样式
-            document.querySelectorAll('.nav-btn').forEach(btn => {
-                btn.className = "nav-btn w-full text-left px-4 py-3 rounded-lg text-slate-600 font-medium";
-            });
-            document.getElementById('nav-' + tabId).className = "nav-btn active w-full text-left px-4 py-3 rounded-lg text-blue-700 font-semibold";
+        // --- 全局拖拽逻辑 ---
+        const body = document.body;
+        let dragTimer;
+
+        // 阻止浏览器默认行为
+        ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+            body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
         }
 
-        // 通用下载函数
+        body.addEventListener('dragenter', (e) => {
+            body.classList.add('drag-active');
+        });
+
+        body.addEventListener('dragover', (e) => {
+            body.classList.add('drag-active');
+            clearTimeout(dragTimer);
+        });
+
+        body.addEventListener('dragleave', (e) => {
+            dragTimer = setTimeout(() => {
+                body.classList.remove('drag-active');
+            }, 100);
+        });
+
+        body.addEventListener('drop', (e) => {
+            body.classList.remove('drag-active');
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files && files.length > 0) {
+                handleGlobalDrop(files[0]);
+            }
+        });
+
+        function handleGlobalDrop(file) {
+            const ext = file.name.split('.').pop().toLowerCase();
+            const type = file.type;
+
+            // 智能分发逻辑
+            if (type.startsWith('image/')) {
+                // 如果是图片，弹出图片压缩并自动填充文件
+                openTool('tool-ic', '🖼️ 图片压缩');
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                document.getElementById('ic-file').files = dt.files;
+                // 模拟自动点击开始压缩
+                setTimeout(() => compressImage(), 500);
+            } else if (ext === 'docx') {
+                openTool('tool-w2p', '📄 Word 转 PDF');
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                document.getElementById('w2p-file').files = dt.files;
+            } else if (type === 'application/pdf') {
+                openTool('tool-p2i', '🖼️ PDF 转 图片');
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                document.getElementById('p2i-file').files = dt.files;
+            } else if (ext === 'txt') {
+                openTool('tool-t2j', '📋 txt 转 json');
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                document.getElementById('t2j-file').files = dt.files;
+            } else if (ext === 'xlsx' || ext === 'xls') {
+                openTool('tool-e2c', '📊 Excel 转 CSV');
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                document.getElementById('e2c-file').files = dt.files;
+            } else if (type.startsWith('video/')) {
+                openTool('tool-v2g', '🎬 视频转 GIF');
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                document.getElementById('v2g-file').files = dt.files;
+            } else {
+                alert('不支持的文件类型：' + file.name + '\n系统无法自动分配工具。');
+            }
+        }
+
+        // --- 0. 页面入场动画 (逐个缓慢显示) ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const cards = document.querySelectorAll('.tool-card');
+            
+            cards.forEach((card, index) => {
+                // 每个卡片按顺序逐个出现，延迟间隔拉长到 120ms，显得更有条不紊
+                setTimeout(() => {
+                    card.classList.add('show');
+                }, index * 120); 
+            });
+
+            // 恢复本地存储的状态
+            const lastQRText = localStorage.getItem('last_qr_text');
+            if (lastQRText) {
+                document.getElementById('qr-text').value = lastQRText;
+                document.getElementById('quick-qr-input').value = lastQRText;
+            }
+
+            const lastTimeUnit = localStorage.getItem('last_time_unit');
+            if (lastTimeUnit) {
+                document.getElementById('time-unit').value = lastTimeUnit;
+            }
+        });
+
+        // --- 0. UI 交互逻辑：弹窗与标签切换 ---
+        const modal = document.getElementById('workspace-modal');
+        const modalContent = modal.querySelector('.modal-content');
+        
+        function openTool(tabId, title) {
+            // 隐藏所有工具面板
+            document.querySelectorAll('.tool-panel').forEach(el => el.classList.remove('active'));
+            // 显示目标面板
+            document.getElementById(tabId).classList.add('active');
+            // 设置标题
+            document.getElementById('modal-title').innerText = title;
+            
+            // 显示弹窗动画
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            modalContent.classList.remove('scale-95');
+            modalContent.classList.add('scale-100');
+        }
+
+        function closeTool() {
+            // 隐藏弹窗动画
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            modalContent.classList.remove('scale-100');
+            modalContent.classList.add('scale-95');
+        }
+
+        // 点击背景遮罩关闭弹窗
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeTool();
+            }
+        });
+
+        // --- 通用下载函数 ---
         function downloadFile(filename, content, mimeType) {
             const link = document.createElement('a');
+            let objectUrl;
             if (content instanceof Blob) {
-                link.href = URL.createObjectURL(content);
+                objectUrl = URL.createObjectURL(content);
+                link.href = objectUrl;
             } else {
                 const blob = new Blob([content], { type: mimeType });
-                link.href = URL.createObjectURL(blob);
+                objectUrl = URL.createObjectURL(blob);
+                link.href = objectUrl;
             }
             link.download = filename;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            // 延迟释放内存，确保下载开始
+            setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
         }
 
-        // 配置 PDF.js 的 worker
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
         // --- 1. 时间计算器 ---
         function calculateTimeDiff() {
@@ -330,22 +700,27 @@
                     unitLabel = '小时';
                     break;
                 case 'minutes':
-                    resultValue = (diffInMilliseconds / (1000 * 60)).toFixed(1);
+                    resultValue = (diffInMilliseconds / (1000 * 60)).toFixed(2);
                     unitLabel = '分钟';
                     break;
                 case 'seconds':
-                    resultValue = Math.floor(diffInMilliseconds / 1000);
+                    resultValue = (diffInMilliseconds / 1000).toFixed(2);
                     unitLabel = '秒';
                     break;
             }
 
             const resultDiv = document.getElementById('time-result');
-            resultDiv.innerHTML = `<span class="text-gray-700">相差：<strong class="text-blue-600 text-3xl ml-2">${resultValue}</strong> ${unitLabel}</span>`;
+            resultDiv.innerHTML = `<span class="text-gray-300">相差：<strong class="text-primary text-3xl ml-2">${resultValue}</strong> ${unitLabel}</span>`;
             resultDiv.classList.remove('hidden');
+
+            // 记忆用户选择的单位
+            localStorage.setItem('last_time_unit', unit);
         }
 
         // --- 2. 二维码生成器 ---
         let qrcode = null;
+        let quickQrcode = null;
+        
         function generateQR() {
             const text = document.getElementById('qr-text').value;
             if (!text) return alert('请输入需要生成二维码的内容！');
@@ -357,6 +732,24 @@
                 colorDark : "#111827", colorLight : "#ffffff",
                 correctLevel : QRCode.CorrectLevel.H
             });
+            // 保存状态
+            localStorage.setItem('last_qr_text', text);
+        }
+
+        // 快速卡片内生成二维码
+        function generateQuickQR() {
+            const text = document.getElementById('quick-qr-input').value;
+            if (!text) return;
+            const container = document.getElementById('quick-qr-result');
+            container.innerHTML = ''; 
+            container.classList.remove('hidden');
+            quickQrcode = new QRCode(container, {
+                text: text, width: 140, height: 140,
+                colorDark : "#111827", colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+            localStorage.setItem('last_qr_text', text);
+            document.getElementById('qr-text').value = text;
         }
 
         // --- 3. 图片压缩 ---
@@ -368,7 +761,7 @@
             try {
                 // 设置压缩选项 (最大 1MB, 使用 Worker 保证不卡顿)
                 const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true };
-                const compressedFile = await browserImageCompression(fileInput, options);
+                const compressedFile = await imageCompression(fileInput, options);
                 downloadFile('compressed_' + fileInput.name, compressedFile);
                 status.innerText = `压缩完成！大小从 ${(fileInput.size/1024/1024).toFixed(2)}MB 降到了 ${(compressedFile.size/1024/1024).toFixed(2)}MB`;
             } catch (err) {
@@ -413,11 +806,12 @@
             if (!fileInput) return alert('请选择 PDF 文档');
             const status = document.getElementById('p2i-status');
             status.innerText = '正在解析 PDF...';
+            let objectUrl = null;
             try {
-                const url = URL.createObjectURL(fileInput);
-                const pdf = await pdfjsLib.getDocument(url).promise;
+                objectUrl = URL.createObjectURL(fileInput);
+                const pdf = await pdfjsLib.getDocument(objectUrl).promise;
                 const zip = new JSZip(); // 准备 ZIP 打包
-                
+
                 // 遍历每一页
                 for(let i=1; i<=pdf.numPages; i++) {
                     status.innerText = `正在转换第 ${i} / ${pdf.numPages} 页...`;
@@ -427,21 +821,25 @@
                     const context = canvas.getContext('2d');
                     canvas.height = viewport.height;
                     canvas.width = viewport.width;
-                    
+
                     // 将 PDF 页面渲染到 canvas
                     await page.render({canvasContext: context, viewport: viewport}).promise;
-                    
+
                     // 转换 canvas 为 Blob
                     const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
                     zip.file(`page_${i}.png`, blob);
                 }
-                
+
                 status.innerText = '正在打包 ZIP...';
                 const zipBlob = await zip.generateAsync({type:"blob"});
                 downloadFile(fileInput.name.replace(/\.[^/.]+$/, "") + '_images.zip', zipBlob);
                 status.innerText = '转换完成，已下载 ZIP 文件！';
             } catch(err) {
                 status.innerText = '转换失败：' + err.message;
+            } finally {
+                if (objectUrl) {
+                    URL.revokeObjectURL(objectUrl);
+                }
             }
         }
 
@@ -453,21 +851,50 @@
             status.innerText = '正在转换...';
             try {
                 const img = new Image();
-                img.src = URL.createObjectURL(fileInput);
+                const objectUrl = URL.createObjectURL(fileInput);
+                img.src = objectUrl;
                 await new Promise(resolve => img.onload = resolve);
-                
-                // 将图片缩放到 256x256 (ICO 常规尺寸)
+                URL.revokeObjectURL(objectUrl); // 释放内存
+
+                // 创建 canvas 并绘制图片
                 const canvas = document.createElement('canvas');
-                canvas.width = 256;
-                canvas.height = 256;
+                const sizes = [256, 128, 64, 48, 32, 16]; // 多种尺寸
+                canvas.width = sizes[0];
+                canvas.height = sizes[0];
                 const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, 256, 256);
-                
-                // 导出为 Blob (强制 mimeType 为 ico)
-                canvas.toBlob(blob => {
-                    downloadFile(fileInput.name.replace(/\.[^/.]+$/, "") + '.ico', blob);
-                    status.innerText = '转换完成！';
-                }, 'image/x-icon');
+                ctx.drawImage(img, 0, 0, sizes[0], sizes[0]);
+
+                // 生成 PNG 数据
+                const pngBlob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                const pngBuffer = await pngBlob.arrayBuffer();
+
+                // 构建 ICO 文件 (简化版: 单图ICO)
+                // ICO 文件格式: 6字节头 + 16字节图像目录 + PNG数据
+                const icoHeader = new ArrayBuffer(22); // 6 + 16
+                const headerView = new DataView(icoHeader);
+                // ICONDIR (6字节)
+                headerView.setUint16(0, 0, true); // 保留字段 (必须为0)
+                headerView.setUint16(2, 1, true); // 图像类型 (1 for ICO)
+                headerView.setUint16(4, 1, true); // 图像数量
+                // ICONDIRENTRY (16字节)
+                headerView.setUint8(6, sizes[0] === 256 ? 0 : sizes[0]); // 宽度 (0表示256)
+                headerView.setUint8(7, sizes[0] === 256 ? 0 : sizes[0]); // 高度
+                headerView.setUint8(8, 0); // 颜色数 (0表示>=256色)
+                headerView.setUint8(9, 0); // 保留字段
+                headerView.setUint16(10, 1, true); // 颜色平面 (通常为1)
+                headerView.setUint16(12, 32, true); // 每像素位数 (32-bit ARGB)
+                headerView.setUint32(14, pngBuffer.byteLength, true); // PNG数据大小
+                headerView.setUint32(18, 22, true); // PNG数据偏移 (头+目录大小)
+
+                // 合并头部和PNG数据
+                const icoBuffer = new Uint8Array(icoHeader.byteLength + pngBuffer.byteLength);
+                icoBuffer.set(new Uint8Array(icoHeader), 0);
+                icoBuffer.set(new Uint8Array(pngBuffer), icoHeader.byteLength);
+
+                // 下载 ICO 文件
+                const icoBlob = new Blob([icoBuffer], { type: 'image/x-icon' });
+                downloadFile(fileInput.name.replace(/\.[^/.]+$/, "") + '.ico', icoBlob);
+                status.innerText = '转换完成！';
             } catch(err) {
                 status.innerText = '转换失败：' + err.message;
             }
@@ -537,6 +964,111 @@
                 status.innerText = '转换完成！';
             } catch(err) {
                 status.innerText = '转换失败：' + err.message;
+            }
+        }
+
+        // --- 11. 图片提取文字 (OCR) ---
+        async function extractTextFromImage() {
+            const fileInput = document.getElementById('ocr-file').files[0];
+            if (!fileInput) return alert('请选择图片文件！');
+            
+            const status = document.getElementById('ocr-status');
+            const resultArea = document.getElementById('ocr-result');
+            const btn = document.getElementById('ocr-btn');
+            
+            status.innerText = '正在加载引擎并识别 (首次使用需下载字库，请耐心等待)...';
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+            resultArea.classList.add('hidden');
+            resultArea.value = '';
+
+            try {
+                const imageUrl = URL.createObjectURL(fileInput);
+                // 使用 Tesseract.js，默认加载英文和简体中文模型
+                const worker = await Tesseract.createWorker({
+                    logger: m => {
+                        if(m.status === 'recognizing text') {
+                            status.innerText = `正在识别: ${Math.round(m.progress * 100)}%`;
+                        } else {
+                            status.innerText = m.status;
+                        }
+                    }
+                });
+                
+                await worker.loadLanguage('eng+chi_sim');
+                await worker.initialize('eng+chi_sim');
+                
+                const { data: { text } } = await worker.recognize(imageUrl);
+                
+                resultArea.value = text;
+                resultArea.classList.remove('hidden');
+                status.innerText = '识别完成！';
+                await worker.terminate();
+                
+            } catch (err) {
+                status.innerText = '识别失败：' + err.message;
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        }
+
+        // --- 12. 视频转 GIF ---
+        const { fetchFile } = FFmpegUtil;
+        const { FFmpeg } = FFmpegWASM;
+        let ffmpeg = null;
+
+        async function convertVideoToGif() {
+            const fileInput = document.getElementById('v2g-file').files[0];
+            if (!fileInput) return alert('请选择视频文件！');
+            
+            const status = document.getElementById('v2g-status');
+            const btn = document.getElementById('v2g-btn');
+            const fps = document.getElementById('v2g-fps').value || 10;
+            const width = document.getElementById('v2g-width').value || 320;
+            
+            status.innerText = '正在加载 FFmpeg 引擎...';
+            btn.disabled = true;
+            btn.classList.add('opacity-50', 'cursor-not-allowed');
+
+            try {
+                if (ffmpeg === null) {
+                    ffmpeg = new FFmpeg();
+                    ffmpeg.on('log', ({ message }) => {
+                        console.log(message);
+                        if(message.includes('frame=')) {
+                            status.innerText = '正在处理视频帧... ' + message;
+                        }
+                    });
+                    await ffmpeg.load({
+                        coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
+                        wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm'
+                    });
+                }
+
+                status.innerText = '正在读取文件...';
+                const inputName = 'input_video' + fileInput.name.substring(fileInput.name.lastIndexOf('.'));
+                const outputName = 'output.gif';
+                
+                await ffmpeg.writeFile(inputName, await fetchFile(fileInput));
+                
+                status.innerText = '正在转换 GIF (耗时较长，请耐心等待)...';
+                // 运行 ffmpeg 命令：设置帧率和缩放宽度（保持比例）
+                await ffmpeg.exec(['-i', inputName, '-vf', `fps=${fps},scale=${width}:-1:flags=lanczos`, outputName]);
+                
+                status.innerText = '正在生成下载文件...';
+                const data = await ffmpeg.readFile(outputName);
+                
+                const blob = new Blob([data.buffer], { type: 'image/gif' });
+                downloadFile(fileInput.name.replace(/\.[^/.]+$/, "") + '.gif', blob);
+                
+                status.innerText = '转换成功，已开始下载！';
+                
+            } catch (err) {
+                status.innerText = '转换失败：' + err.message;
+            } finally {
+                btn.disabled = false;
+                btn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
         }
     </script>
