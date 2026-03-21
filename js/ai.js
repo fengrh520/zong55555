@@ -13,22 +13,6 @@ function closeAI() {
     document.getElementById('ai-modal').classList.add('hidden');
 }
 
-function toggleAISettings() {
-    const settings = document.getElementById('ai-settings');
-    if (settings.classList.contains('hidden')) {
-        document.getElementById('ai-api-key').value = localStorage.getItem('gemini_api_key') || '';
-        settings.classList.remove('hidden');
-    } else {
-        settings.classList.add('hidden');
-    }
-}
-
-function saveAISettings() {
-    const key = document.getElementById('ai-api-key').value.trim();
-    if (key) localStorage.setItem('gemini_api_key', key);
-    toggleAISettings();
-}
-
 function handleAIFile(input) {
     const file = input.files[0];
     if (file) {
@@ -88,14 +72,8 @@ function fileToBase64(file) {
 async function sendAIMessage() {
     const inputEl = document.getElementById('ai-input');
     const text = inputEl.value.trim();
-    const apiKey = localStorage.getItem('gemini_api_key');
 
     if (!text && !selectedFile) return;
-    if (!apiKey) {
-        alert('请先点击右上角齿轮 ⚙️ 设置 Gemini API Key！');
-        toggleAISettings();
-        return;
-    }
 
     let fileBase64 = null;
     let mimeType = null;
@@ -129,12 +107,11 @@ async function sendAIMessage() {
     box.scrollTop = box.scrollHeight;
 
     try {
-        // 请求本地部署的 Vercel Serverless API，而不是直接请求 Google
+        // 请求本地部署的 Vercel Serverless API
         const response = await fetch(`/api/chat`, {
             method: 'POST',
             headers: { 
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${apiKey}` // 将 Key 放在 Header 中传给我们的后端
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify({
                 history: aiChatHistory

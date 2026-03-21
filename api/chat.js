@@ -17,12 +17,11 @@ export default async function handler(req, res) {
     }
 
     try {
-        // 从请求头获取前端传来的 API Key
-        const authHeader = req.headers.authorization;
-        const apiKey = authHeader ? authHeader.replace('Bearer ', '') : null;
+        // 直接从 Vercel 环境变量中读取你的私有 API Key
+        const apiKey = process.env.GEMINI_API_KEY;
         
         if (!apiKey) {
-            return res.status(401).json({ error: '未提供 API Key' });
+            return res.status(500).json({ error: '服务器未配置 API Key 环境变量' });
         }
 
         const { history } = req.body;
