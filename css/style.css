@@ -1,0 +1,64 @@
+body {
+    background-color: #0b0f19;
+    color: #e2e8f0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+/* 滚动条美化 */
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #0b0f19; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+
+/* 卡片悬浮动画 */
+.tool-card {
+    transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1); 
+    border: 1px solid #1e293b;
+    /* 初始状态：向下偏移且透明，等待 JS 触发动画 */
+    opacity: 0;
+    transform: translateY(50px); 
+}
+
+/* 当加上 show 类时触发进入动画 */
+.tool-card.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.tool-card:hover {
+    transform: translateY(-6px);
+    border-color: #3b82f6;
+    box-shadow: 0 12px 30px -5px rgba(59, 130, 246, 0.25);
+    background-color: #1e293b;
+}
+
+/* 模态弹窗（工作区）动画 */
+#workspace-modal {
+    transition: opacity 0.3s ease;
+}
+.modal-content {
+    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.tool-panel { display: none; }
+.tool-panel.active { display: block; }
+
+/* 全局拖拽遮罩层 */
+#dropzone-overlay {
+    transition: all 0.3s ease;
+    pointer-events: none;
+}
+body.drag-active #dropzone-overlay {
+    opacity: 1;
+    z-index: 9999;
+}
+
+/* 隐藏文件输入框，用更美观的拖拽区代替 */
+.file-drop-area {
+    border: 2px dashed #475569;
+    transition: all 0.3s ease;
+}
+.file-drop-area:hover, .file-drop-area.drag-over {
+    border-color: #6366f1;
+    background-color: rgba(99, 102, 241, 0.1);
+}

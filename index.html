@@ -38,72 +38,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
 
-    <style>
-        body {
-            background-color: #0b0f19;
-            color: #e2e8f0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        }
-        
-        /* 滚动条美化 */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0b0f19; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #475569; }
-
-        /* 卡片悬浮动画 */
-        .tool-card {
-            transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1); /* 动画速度进一步减慢到0.7秒 */
-            border: 1px solid #1e293b;
-            /* 初始状态：向下偏移且透明，等待 JS 触发动画 */
-            opacity: 0;
-            transform: translateY(50px); /* 进一步增加下沉距离，显得更飘逸 */
-        }
-        
-        /* 当加上 show 类时触发进入动画 */
-        .tool-card.show {
-            opacity: 1;
-            transform: translateY(0);
-        }
-
-        .tool-card:hover {
-            transform: translateY(-6px);
-            border-color: #3b82f6;
-            box-shadow: 0 12px 30px -5px rgba(59, 130, 246, 0.25);
-            background-color: #1e293b;
-        }
-
-        /* 模态弹窗（工作区）动画 */
-        #workspace-modal {
-            transition: opacity 0.3s ease;
-        }
-        .modal-content {
-            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
-        
-        .tool-panel { display: none; }
-        .tool-panel.active { display: block; }
-
-        /* 全局拖拽遮罩层 */
-        #dropzone-overlay {
-            transition: all 0.3s ease;
-            pointer-events: none;
-        }
-        body.drag-active #dropzone-overlay {
-            opacity: 1;
-            z-index: 9999;
-        }
-        
-        /* 隐藏文件输入框，用更美观的拖拽区代替 */
-        .file-drop-area {
-            border: 2px dashed #475569;
-            transition: all 0.3s ease;
-        }
-        .file-drop-area:hover, .file-drop-area.drag-over {
-            border-color: #6366f1;
-            background-color: rgba(99, 102, 241, 0.1);
-        }
-    </style>
+    <!-- 引入分离的样式表 -->
+    <link rel="stylesheet" href="./css/style.css">
 </head>
 <body class="min-h-screen flex flex-col">
     <!-- 全局拖拽遮罩 -->
@@ -128,7 +64,9 @@
                 </div>
             </div>
             <div class="flex gap-4">
-                <a href="#" class="px-4 py-2 rounded-lg bg-gray-800 hover:bg-gray-700 text-sm font-medium transition-colors border border-gray-700">⭐ GitHub</a>
+                <button onclick="openAI()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm font-bold transition-all shadow-lg shadow-purple-500/30 flex items-center gap-2">
+                    <span class="text-lg">🤖</span> 小封AI
+                </button>
             </div>
         </div>
     </header>
@@ -566,6 +504,66 @@
             </div>
         </div>
     </div>
+
+    <!-- 小封AI 弹窗 -->
+    <div id="ai-modal" class="fixed inset-0 z-[60] flex items-center justify-center bg-black/60 backdrop-blur-sm hidden">
+        <div class="bg-cardBg w-full max-w-md rounded-2xl shadow-2xl border border-gray-700 flex flex-col h-[600px] overflow-hidden relative transform scale-100 transition-all">
+            <!-- 头部 -->
+            <div class="p-4 border-b border-gray-800 flex justify-between items-center bg-gradient-to-r from-blue-900/50 to-purple-900/50">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center text-xl shadow-[0_0_15px_rgba(168,85,247,0.5)]">🤖</div>
+                    <h3 class="font-bold text-white tracking-wide">小封AI</h3>
+                </div>
+                <div class="flex gap-3">
+                    <button onclick="toggleAISettings()" class="text-gray-400 hover:text-white transition-colors" title="设置 API Key">⚙️</button>
+                    <button onclick="closeAI()" class="text-gray-400 hover:text-white transition-colors text-lg font-bold">✕</button>
+                </div>
+            </div>
+            
+            <!-- 聊天记录区 -->
+            <div id="ai-chat-box" class="flex-1 p-4 overflow-y-auto space-y-4 bg-[#0b0f19]">
+                <!-- 消息通过 JS 动态插入 -->
+            </div>
+
+            <!-- 文件预览区 -->
+            <div id="ai-file-preview" class="hidden px-4 py-2 bg-gray-800 border-t border-gray-700 flex justify-between items-center text-xs">
+                <span id="ai-file-name" class="text-purple-400 truncate max-w-[200px]"></span>
+                <button onclick="clearAIFile()" class="text-red-400 hover:text-red-300">删除附件</button>
+            </div>
+
+            <!-- 输入区 -->
+            <div class="p-3 border-t border-gray-800 bg-cardBg flex items-center gap-2">
+                <input type="file" id="ai-file-input" class="hidden" accept="image/*,audio/*,video/*" onchange="handleAIFile(this)">
+                <button onclick="document.getElementById('ai-file-input').click()" class="text-gray-400 hover:text-purple-400 p-2 transition-colors" title="上传图片/音视频">
+                    📎
+                </button>
+                <input type="text" id="ai-input" class="flex-1 bg-gray-800 text-white rounded-full px-4 py-2.5 text-sm focus:outline-none focus:ring-1 focus:ring-purple-500 border border-gray-700" placeholder="发消息，或传个图看看..." onkeypress="if(event.key==='Enter') sendAIMessage()">
+                <button onclick="sendAIMessage()" class="bg-gradient-to-r from-blue-600 to-purple-600 text-white p-2.5 rounded-full hover:from-blue-500 hover:to-purple-500 transition-colors shadow-lg flex-shrink-0">
+                    发送
+                </button>
+            </div>
+
+            <!-- 设置面板 (默认隐藏) -->
+            <div id="ai-settings" class="absolute inset-0 bg-cardBg/95 backdrop-blur-md z-10 hidden flex flex-col p-6 items-center justify-center">
+                <div class="w-full max-w-sm bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-2xl">
+                    <h4 class="text-xl font-bold text-white mb-2 flex items-center gap-2">🔑 接入 API</h4>
+                    <p class="text-xs text-gray-400 mb-6">纯前端安全调用，秘钥仅保存在您本地浏览器中。</p>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">Google Gemini API Key</label>
+                    <input type="password" id="ai-api-key" class="w-full bg-gray-900 text-white p-3 rounded-lg border border-gray-700 mb-6 focus:ring-2 focus:ring-purple-500 outline-none" placeholder="AIzaSy...">
+                    <div class="flex gap-4 w-full">
+                        <button onclick="toggleAISettings()" class="flex-1 bg-gray-700 text-white py-2.5 rounded-lg hover:bg-gray-600 transition-colors">取消</button>
+                        <button onclick="saveAISettings()" class="flex-1 bg-purple-600 text-white py-2.5 rounded-lg font-bold hover:bg-purple-500 transition-colors shadow-lg shadow-purple-500/30">保存</button>
+                    </div>
+                    <div class="mt-4 text-xs text-center text-blue-400">
+                        <a href="https://aistudio.google.com/app/apikey" target="_blank" class="hover:underline">免费获取 Gemini API Key ↗</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 引入分离的 AI 逻辑 -->
+    <script src="./js/ai.js"></script>
 
     <!-- === 核心 JavaScript 逻辑 === -->
     <script>
