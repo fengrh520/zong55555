@@ -27,8 +27,8 @@ export default async function handler(req, res) {
         const { history } = req.body;
 
         // 由 Vercel 的服务器 (海外) 发起对 Google 的真实请求
-        // 使用 Google 最新的实验性 2.0 模型：gemini-2.0-flash-exp 
-        const googleResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent?key=${apiKey}`, {
+        // 使用 Google 最新发布的 2.5 Flash 模型
+        const googleResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
