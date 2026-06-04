@@ -61,6 +61,12 @@ function download(url, dest, timeoutMs = 120000) {
 }
 
 async function main() {
+  const marker = path.join(VENDOR, "ffmpeg/ffmpeg-core.wasm");
+  if (fs.existsSync(marker)) {
+    console.log("vendor/ already present, skip build");
+    return;
+  }
+
   mkdirp(VENDOR);
   mkdirp(TESS);
 
