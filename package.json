@@ -1,0 +1,34 @@
+{
+  "name": "zong55555",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "vendor": "node scripts/fetch-vendor.mjs",
+    "postinstall": "node scripts/fetch-vendor.mjs",
+    "audit": "node scripts/tools-audit.mjs https://tools.5593102.top",
+    "audit:local": "node scripts/tools-audit.mjs local"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fengrh520/zong55555.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/fengrh520/zong55555/issues"
+  },
+  "homepage": "https://github.com/fengrh520/zong55555#readme",
+  "devDependencies": {
+    "@ffmpeg/core": "^0.12.6",
+    "@ffmpeg/ffmpeg": "^0.12.10",
+    "@ffmpeg/util": "^0.12.1",
+    "jszip": "^3.10.1",
+    "playwright": "^1.60.0",
+    "tesseract.js": "^5.1.1",
+    "tesseract.js-core": "^5.1.1",
+    "xlsx": "^0.18.5"
+  }
+}

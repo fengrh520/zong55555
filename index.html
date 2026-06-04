@@ -32,11 +32,10 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.1/marked.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-    <!-- 新增：tesseract.js 用于纯本地 OCR 识别 -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <!-- 新增：ffmpeg.wasm 用于纯本地视频处理 -->
-    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/ffmpeg@0.12.10/dist/umd/ffmpeg.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@ffmpeg/util@0.12.1/dist/umd/index.js"></script>
+    <!-- OCR / 视频转 GIF：同源 vendor，避免 Worker 跨域 -->
+    <script src="./vendor/tesseract/tesseract.min.js"></script>
+    <script src="./vendor/ffmpeg/ffmpeg.js"></script>
+    <script src="./vendor/ffmpeg/ffmpeg-util.js"></script>
 
     <!-- 引入分离的样式表 -->
     <link rel="stylesheet" href="./css/style.css">
@@ -1034,40 +1033,87 @@
             }
         }
 
+        function vendorUrl(subpath) {
+            return new URL(subpath, window.location.href).href;
+        }
+
+        function raceWithTimeout(promise, ms, message) {
+            return Promise.race([
+                promise,
+                new Promise((_, reject) => setTimeout(() => reject(new Error(message)), ms))
+            ]);
+        }
+
+        async function compressImageForOcr(file, maxSide = 1200) {
+            const url = URL.createObjectURL(file);
+            try {
+                const img = await new Promise((resolve, reject) => {
+                    const el = new Image();
+                    el.onload = () => resolve(el);
+                    el.onerror = () => reject(new Error('图片无法读取'));
+                    el.src = url;
+                });
+                const scale = Math.min(1, maxSide / Math.max(img.width, img.height));
+                if (scale >= 1) return url;
+                const canvas = document.createElement('canvas');
+                canvas.width = Math.round(img.width * scale);
+                canvas.height = Math.round(img.height * scale);
+                canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+                URL.revokeObjectURL(url);
+                return canvas.toDataURL('image/jpeg', 0.92);
+            } catch (e) {
+                URL.revokeObjectURL(url);
+                throw e;
+            }
+        }
+
         // --- 11. 图片提取文字 (OCR) ---
         async function extractTextFromImage() {
             const fileInput = document.getElementById('ocr-file').files[0];
             if (!fileInput) return alert('请选择图片文件！');
+            if (fileInput.size > 15 * 1024 * 1024) return alert('图片请小于 15MB');
             
             const status = document.getElementById('ocr-status');
             const resultArea = document.getElementById('ocr-result');
             const btn = document.getElementById('ocr-btn');
+            const tessBase = vendorUrl('./vendor/tesseract/');
+            const langBase = vendorUrl('./vendor/tessdata');
             
-            status.innerText = '正在加载引擎并识别 (首次使用需下载字库，请耐心等待)...';
+            status.innerText = '正在加载 OCR 引擎（同源字库，首次约需数十秒）...';
             btn.disabled = true;
             btn.classList.add('opacity-50', 'cursor-not-allowed');
             resultArea.classList.add('hidden');
             resultArea.value = '';
 
+            let imageUrl = null;
             try {
-                const imageUrl = URL.createObjectURL(fileInput);
-                // 使用 Tesseract.js，默认加载英文和简体中文模型
-                const worker = await Tesseract.createWorker({
-                    logger: m => {
-                        if(m.status === 'recognizing text') {
-                            status.innerText = `正在识别: ${Math.round(m.progress * 100)}%`;
-                        } else {
-                            status.innerText = m.status;
+                imageUrl = await compressImageForOcr(fileInput);
+                const worker = await raceWithTimeout(
+                    Tesseract.createWorker('eng+chi_sim', 1, {
+                        workerPath: tessBase + 'worker.min.js',
+                        corePath: tessBase,
+                        langPath: langBase,
+                        logger: m => {
+                            if (m.status === 'recognizing text') {
+                                status.innerText = `正在识别: ${Math.round(m.progress * 100)}%`;
+                            } else if (typeof m.progress === 'number' && m.progress > 0) {
+                                status.innerText = `${m.status} ${Math.round(m.progress * 100)}%`;
+                            } else {
+                                status.innerText = m.status || '处理中...';
+                            }
                         }
-                    }
-                });
+                    }),
+                    120000,
+                    '引擎加载超时（120s），请刷新后重试'
+                );
                 
-                await worker.loadLanguage('eng+chi_sim');
-                await worker.initialize('eng+chi_sim');
+                const { data: { text } } = await raceWithTimeout(
+                    worker.recognize(imageUrl),
+                    120000,
+                    '识别超时（120s）'
+                );
                 
-                const { data: { text } } = await worker.recognize(imageUrl);
-                
-                resultArea.value = text;
+                resultArea.value = text.trim() || '（未识别到文字）';
                 resultArea.classList.remove('hidden');
                 status.innerText = '识别完成！';
                 await worker.terminate();
@@ -1075,6 +1121,7 @@
             } catch (err) {
                 status.innerText = '识别失败：' + err.message;
             } finally {
+                if (imageUrl && imageUrl.startsWith('blob:')) URL.revokeObjectURL(imageUrl);
                 btn.disabled = false;
                 btn.classList.remove('opacity-50', 'cursor-not-allowed');
             }
@@ -1088,11 +1135,13 @@
         async function convertVideoToGif() {
             const fileInput = document.getElementById('v2g-file').files[0];
             if (!fileInput) return alert('请选择视频文件！');
+            if (fileInput.size > 10 * 1024 * 1024) return alert('视频请小于 10MB（演示限制）');
             
             const status = document.getElementById('v2g-status');
             const btn = document.getElementById('v2g-btn');
             const fps = document.getElementById('v2g-fps').value || 10;
             const width = document.getElementById('v2g-width').value || 320;
+            const ffBase = vendorUrl('./vendor/ffmpeg/');
             
             status.innerText = '正在加载 FFmpeg 引擎...';
             btn.disabled = true;
@@ -1107,10 +1156,14 @@
                             status.innerText = '正在处理视频帧... ' + message;
                         }
                     });
-                    await ffmpeg.load({
-                        coreURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js',
-                        wasmURL: 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm'
-                    });
+                    await raceWithTimeout(
+                        ffmpeg.load({
+                            coreURL: ffBase + 'ffmpeg-core.js',
+                            wasmURL: ffBase + 'ffmpeg-core.wasm'
+                        }),
+                        60000,
+                        'FFmpeg 引擎加载超时（60s）'
+                    );
                 }
 
                 status.innerText = '正在读取文件...';
