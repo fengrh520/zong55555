@@ -420,6 +420,15 @@
             <div class="space-y-5">
                 <p class="text-sm text-purple-200 bg-purple-900/30 p-3 rounded-lg border border-purple-700/50">首次识别需要下载约 20MB 的字库模型到浏览器缓存，请耐心等待。</p>
                 <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">识别语言</label>
+                    <select id="ocr-lang" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl p-2 border">
+                        <option value="eng+chi_sim" selected>eng+chi_sim（默认，中英）</option>
+                        <option value="chi_sim">chi_sim（仅中文，更快）</option>
+                        <option value="eng">eng（仅英文，更快）</option>
+                    </select>
+                    <p class="text-xs text-gray-500 mt-1">首次加载字库约 10–20 秒</p>
+                </div>
+                <div>
                     <label class="block text-sm font-medium text-gray-300 mb-2">选择包含文字的图片</label>
                     <input type="file" id="ocr-file" accept="image/*" class="w-full bg-gray-800 border-gray-700 text-white rounded-xl p-2 border">
                 </div>
@@ -545,6 +554,7 @@
 
     <!-- 引入分离的 AI 逻辑 -->
     <script src="./js/ai.js"></script>
+    <script src="./js/tool-guard.js"></script>
 
     <!-- === 核心 JavaScript 逻辑 === -->
     <script>
@@ -696,6 +706,21 @@
             modal.classList.remove('opacity-0', 'pointer-events-none');
             modalContent.classList.remove('scale-95');
             modalContent.classList.add('scale-100');
+
+            if (tabId === 'tool-ocr') {
+                const langEl = document.getElementById('ocr-lang');
+                const lang = langEl ? langEl.value : 'eng+chi_sim';
+                preloadOcrWorker(lang).catch(() => {});
+            }
+            if (tabId === 'tool-v2g') {
+                const v2gStatus = document.getElementById('v2g-status');
+                if (v2gStatus) v2gStatus.innerText = '引擎可在后台预加载...';
+                getFfmpeg().then(() => {
+                    if (v2gStatus && v2gStatus.innerText === '引擎可在后台预加载...') {
+                        v2gStatus.innerText = '引擎已就绪，可选择视频';
+                    }
+                }).catch(() => {});
+            }
         }
 
         function closeTool() {
@@ -823,16 +848,23 @@
             const fileInput = document.getElementById('ic-file').files[0];
             if (!fileInput) return alert('请选择图片');
             const status = document.getElementById('ic-status');
-            status.innerText = '正在压缩...';
-            try {
-                // 设置压缩选项 (最大 1MB, 使用 Worker 保证不卡顿)
-                const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true };
-                const compressedFile = await imageCompression(fileInput, options);
-                downloadFile('compressed_' + fileInput.name, compressedFile);
-                status.innerText = `压缩完成！大小从 ${(fileInput.size/1024/1024).toFixed(2)}MB 降到了 ${(compressedFile.size/1024/1024).toFixed(2)}MB`;
-            } catch (err) {
-                status.innerText = '压缩失败：' + err.message;
-            }
+            const btn = document.querySelector('#tool-ic button');
+            await runWithToolGuard({
+                btn,
+                statusEl: status,
+                failPrefix: '压缩失败：',
+                timeoutMs: 90000,
+                validate: () => assertFileSize(fileInput, 20 * 1024 * 1024, '图片'),
+                onSuccessStatus: (result) =>
+                    `压缩完成！大小从 ${(fileInput.size / 1024 / 1024).toFixed(2)}MB 降到了 ${(result.compressedFile.size / 1024 / 1024).toFixed(2)}MB`,
+                task: async () => {
+                    status.innerText = '正在压缩...';
+                    const options = { maxSizeMB: 1, maxWidthOrHeight: 1920, useWebWorker: true };
+                    const compressedFile = await imageCompression(fileInput, options);
+                    downloadFile('compressed_' + fileInput.name, compressedFile);
+                    return { compressedFile };
+                }
+            });
         }
 
         // --- 4. Word 转 PDF ---
@@ -840,30 +872,32 @@
             const fileInput = document.getElementById('w2p-file').files[0];
             if (!fileInput) return alert('请选择 Word 文档');
             const status = document.getElementById('w2p-status');
-            status.innerText = '正在读取和转换...';
-            try {
-                // 读取 Word 文件内容
-                const arrayBuffer = await fileInput.arrayBuffer();
-                // 转换为 HTML
-                const result = await mammoth.convertToHtml({arrayBuffer: arrayBuffer});
-                const container = document.createElement('div');
-                container.innerHTML = result.value;
-                container.style.padding = '30px';
-                container.style.width = '800px'; // 模拟 A4 宽度
-                container.style.fontSize = '14px';
-                
-                status.innerText = '正在生成 PDF，可能需要几秒钟...';
-                // 打印成 PDF
-                await html2pdf().from(container).set({
-                    margin: 10,
-                    filename: fileInput.name.replace(/\.[^/.]+$/, "") + '.pdf',
-                    html2canvas: { scale: 2 },
-                    jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
-                }).save();
-                status.innerText = '转换完成，已开始下载！';
-            } catch(err) {
-                status.innerText = '转换失败：' + err.message;
-            }
+            const btn = document.querySelector('#tool-w2p button');
+            await runWithToolGuard({
+                btn,
+                statusEl: status,
+                timeoutMs: 90000,
+                validate: () => assertFileSize(fileInput, 5 * 1024 * 1024, 'Word 文档'),
+                onSuccessStatus: '转换完成，已开始下载！',
+                task: async () => {
+                    status.innerText = '正在读取 Word 文档...';
+                    const arrayBuffer = await fileInput.arrayBuffer();
+                    status.innerText = '正在渲染 HTML...';
+                    const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+                    const container = document.createElement('div');
+                    container.innerHTML = result.value;
+                    container.style.padding = '30px';
+                    container.style.width = '800px';
+                    container.style.fontSize = '14px';
+                    status.innerText = '正在导出 PDF...';
+                    await html2pdf().from(container).set({
+                        margin: 10,
+                        filename: fileInput.name.replace(/\.[^/.]+$/, "") + '.pdf',
+                        html2canvas: { scale: 2 },
+                        jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                    }).save();
+                }
+            });
         }
 
         // --- 5. PDF 转 图片 ---
@@ -871,42 +905,45 @@
             const fileInput = document.getElementById('p2i-file').files[0];
             if (!fileInput) return alert('请选择 PDF 文档');
             const status = document.getElementById('p2i-status');
-            status.innerText = '正在解析 PDF...';
-            let objectUrl = null;
-            try {
-                objectUrl = URL.createObjectURL(fileInput);
-                const pdf = await pdfjsLib.getDocument(objectUrl).promise;
-                const zip = new JSZip(); // 准备 ZIP 打包
+            const btn = document.querySelector('#tool-p2i button');
+            await runWithToolGuard({
+                btn,
+                statusEl: status,
+                timeoutMs: 90000,
+                validate: () => assertFileSize(fileInput, 10 * 1024 * 1024, 'PDF 文档'),
+                onSuccessStatus: '转换完成，已下载 ZIP 文件！',
+                task: async () => {
+                    let objectUrl = null;
+                    try {
+                        status.innerText = '正在解析 PDF...';
+                        objectUrl = URL.createObjectURL(fileInput);
+                        const pdf = await pdfjsLib.getDocument(objectUrl).promise;
+                        if (pdf.numPages > 20) {
+                            throw new Error('PDF 页数不能超过 20 页（当前 ' + pdf.numPages + ' 页）');
+                        }
+                        const zip = new JSZip();
 
-                // 遍历每一页
-                for(let i=1; i<=pdf.numPages; i++) {
-                    status.innerText = `正在转换第 ${i} / ${pdf.numPages} 页...`;
-                    const page = await pdf.getPage(i);
-                    const viewport = page.getViewport({ scale: 2 }); // 提升清晰度
-                    const canvas = document.createElement('canvas');
-                    const context = canvas.getContext('2d');
-                    canvas.height = viewport.height;
-                    canvas.width = viewport.width;
+                        for (let i = 1; i <= pdf.numPages; i++) {
+                            status.innerText = `正在转换第 ${i} / ${pdf.numPages} 页...`;
+                            const page = await pdf.getPage(i);
+                            const viewport = page.getViewport({ scale: 2 });
+                            const canvas = document.createElement('canvas');
+                            const context = canvas.getContext('2d');
+                            canvas.height = viewport.height;
+                            canvas.width = viewport.width;
+                            await page.render({ canvasContext: context, viewport: viewport }).promise;
+                            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                            zip.file(`page_${i}.png`, blob);
+                        }
 
-                    // 将 PDF 页面渲染到 canvas
-                    await page.render({canvasContext: context, viewport: viewport}).promise;
-
-                    // 转换 canvas 为 Blob
-                    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
-                    zip.file(`page_${i}.png`, blob);
+                        status.innerText = '正在打包 ZIP...';
+                        const zipBlob = await zip.generateAsync({ type: "blob" });
+                        downloadFile(fileInput.name.replace(/\.[^/.]+$/, "") + '_images.zip', zipBlob);
+                    } finally {
+                        if (objectUrl) URL.revokeObjectURL(objectUrl);
+                    }
                 }
-
-                status.innerText = '正在打包 ZIP...';
-                const zipBlob = await zip.generateAsync({type:"blob"});
-                downloadFile(fileInput.name.replace(/\.[^/.]+$/, "") + '_images.zip', zipBlob);
-                status.innerText = '转换完成，已下载 ZIP 文件！';
-            } catch(err) {
-                status.innerText = '转换失败：' + err.message;
-            } finally {
-                if (objectUrl) {
-                    URL.revokeObjectURL(objectUrl);
-                }
-            }
+            });
         }
 
         // --- 6. png/jpg 转 ico ---
@@ -1013,24 +1050,25 @@
             const fileInput = document.getElementById('e2c-file').files[0];
             if (!fileInput) return alert('请选择 Excel 文件');
             const status = document.getElementById('e2c-status');
-            status.innerText = '正在转换...';
-            try {
-                const arrayBuffer = await fileInput.arrayBuffer();
-                // 读取 Excel 数据
-                const workbook = XLSX.read(arrayBuffer, {type: 'array'});
-                const firstSheetName = workbook.SheetNames[0];
-                const worksheet = workbook.Sheets[firstSheetName];
-                // 转换为 CSV 字符串
-                const csv = XLSX.utils.sheet_to_csv(worksheet);
-                
-                // 增加 BOM 头部，防止 Excel 直接打开 CSV 乱码
-                const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
-                const blob = new Blob([bom, csv], { type: 'text/csv;charset=utf-8;' });
-                downloadFile(fileInput.name.replace(/\.[^/.]+$/, "") + '.csv', blob);
-                status.innerText = '转换完成！';
-            } catch(err) {
-                status.innerText = '转换失败：' + err.message;
-            }
+            const btn = document.querySelector('#tool-e2c button');
+            await runWithToolGuard({
+                btn,
+                statusEl: status,
+                timeoutMs: 90000,
+                validate: () => assertFileSize(fileInput, 10 * 1024 * 1024, 'Excel 文件'),
+                onSuccessStatus: '转换完成！',
+                task: async () => {
+                    status.innerText = '正在转换...';
+                    const arrayBuffer = await fileInput.arrayBuffer();
+                    const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                    const firstSheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[firstSheetName];
+                    const csv = XLSX.utils.sheet_to_csv(worksheet);
+                    const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
+                    const blob = new Blob([bom, csv], { type: 'text/csv;charset=utf-8;' });
+                    downloadFile(fileInput.name.replace(/\.[^/.]+$/, "") + '.csv', blob);
+                }
+            });
         }
 
         function vendorUrl(subpath) {
@@ -1068,6 +1106,62 @@
         }
 
         // --- 11. 图片提取文字 (OCR) ---
+        let ocrWorker = null;
+        let ocrWorkerLang = null;
+        let ocrPreloadPromise = null;
+        let ocrPendingLang = null;
+
+        function ocrLogger(statusEl) {
+            return m => {
+                if (!statusEl) return;
+                if (m.status === 'recognizing text') {
+                    statusEl.innerText = `正在识别: ${Math.round(m.progress * 100)}%`;
+                } else if (typeof m.progress === 'number' && m.progress > 0) {
+                    statusEl.innerText = `${m.status} ${Math.round(m.progress * 100)}%`;
+                } else {
+                    statusEl.innerText = m.status || '处理中...';
+                }
+            };
+        }
+
+        async function getOcrWorker(lang, statusEl) {
+            if (ocrWorker && ocrWorkerLang === lang) return ocrWorker;
+            if (ocrPreloadPromise && ocrPendingLang === lang) return ocrPreloadPromise;
+            if (ocrWorker) {
+                await ocrWorker.terminate();
+                ocrWorker = null;
+                ocrWorkerLang = null;
+            }
+            const tessBase = vendorUrl('./vendor/tesseract/');
+            const langBase = vendorUrl('./vendor/tessdata');
+            ocrPendingLang = lang;
+            ocrPreloadPromise = raceWithTimeout(
+                Tesseract.createWorker(lang, 1, {
+                    workerPath: tessBase + 'worker.min.js',
+                    corePath: tessBase,
+                    langPath: langBase,
+                    logger: ocrLogger(statusEl)
+                }),
+                120000,
+                '引擎加载超时（120s），请刷新后重试'
+            ).then(w => {
+                ocrWorker = w;
+                ocrWorkerLang = lang;
+                ocrPreloadPromise = null;
+                ocrPendingLang = null;
+                return w;
+            }).catch(err => {
+                ocrPreloadPromise = null;
+                ocrPendingLang = null;
+                throw err;
+            });
+            return ocrPreloadPromise;
+        }
+
+        function preloadOcrWorker(lang) {
+            return getOcrWorker(lang, null);
+        }
+
         async function extractTextFromImage() {
             const fileInput = document.getElementById('ocr-file').files[0];
             if (!fileInput) return alert('请选择图片文件！');
@@ -1076,10 +1170,12 @@
             const status = document.getElementById('ocr-status');
             const resultArea = document.getElementById('ocr-result');
             const btn = document.getElementById('ocr-btn');
-            const tessBase = vendorUrl('./vendor/tesseract/');
-            const langBase = vendorUrl('./vendor/tessdata');
+            const langEl = document.getElementById('ocr-lang');
+            const lang = langEl ? langEl.value : 'eng+chi_sim';
             
-            status.innerText = '正在加载 OCR 引擎（同源字库，首次约需数十秒）...';
+            status.innerText = ocrWorker && ocrWorkerLang === lang
+                ? '正在识别...'
+                : '正在加载 OCR 引擎（同源字库，首次约需数十秒）...';
             btn.disabled = true;
             btn.classList.add('opacity-50', 'cursor-not-allowed');
             resultArea.classList.add('hidden');
@@ -1088,24 +1184,7 @@
             let imageUrl = null;
             try {
                 imageUrl = await compressImageForOcr(fileInput);
-                const worker = await raceWithTimeout(
-                    Tesseract.createWorker('eng+chi_sim', 1, {
-                        workerPath: tessBase + 'worker.min.js',
-                        corePath: tessBase,
-                        langPath: langBase,
-                        logger: m => {
-                            if (m.status === 'recognizing text') {
-                                status.innerText = `正在识别: ${Math.round(m.progress * 100)}%`;
-                            } else if (typeof m.progress === 'number' && m.progress > 0) {
-                                status.innerText = `${m.status} ${Math.round(m.progress * 100)}%`;
-                            } else {
-                                status.innerText = m.status || '处理中...';
-                            }
-                        }
-                    }),
-                    120000,
-                    '引擎加载超时（120s），请刷新后重试'
-                );
+                const worker = await getOcrWorker(lang, status);
                 
                 const { data: { text } } = await raceWithTimeout(
                     worker.recognize(imageUrl),
@@ -1116,7 +1195,6 @@
                 resultArea.value = text.trim() || '（未识别到文字）';
                 resultArea.classList.remove('hidden');
                 status.innerText = '识别完成！';
-                await worker.terminate();
                 
             } catch (err) {
                 status.innerText = '识别失败：' + err.message;
@@ -1128,68 +1206,98 @@
         }
 
         // --- 12. 视频转 GIF ---
-        const { fetchFile } = FFmpegUtil;
-        const { FFmpeg } = FFmpegWASM;
         let ffmpeg = null;
+        let ffmpegLoadPromise = null;
+
+        async function getFfmpeg() {
+            if (ffmpeg) return ffmpeg;
+            if (ffmpegLoadPromise) return ffmpegLoadPromise;
+            const { FFmpeg } = FFmpegWASM;
+            const ffBase = vendorUrl('./vendor/ffmpeg/');
+            ffmpegLoadPromise = (async () => {
+                const instance = new FFmpeg();
+                instance.on('log', ({ message }) => {
+                    console.log(message);
+                    const v2gStatus = document.getElementById('v2g-status');
+                    if (v2gStatus && message.includes('frame=')) {
+                        v2gStatus.innerText = '正在处理视频帧... ' + message;
+                    }
+                });
+                await raceWithTimeout(
+                    instance.load({
+                        coreURL: ffBase + 'ffmpeg-core.js',
+                        wasmURL: ffBase + 'ffmpeg-core.wasm'
+                    }),
+                    60000,
+                    'FFmpeg 引擎加载超时（60s）'
+                );
+                ffmpeg = instance;
+                ffmpegLoadPromise = null;
+                return instance;
+            })();
+            return ffmpegLoadPromise;
+        }
+
+        async function getVideoDurationSec(file) {
+            const url = URL.createObjectURL(file);
+            try {
+                const video = document.createElement('video');
+                video.preload = 'metadata';
+                await new Promise((resolve, reject) => {
+                    video.onloadedmetadata = () => resolve();
+                    video.onerror = () => reject(new Error('视频无法读取元数据'));
+                    video.src = url;
+                });
+                return video.duration;
+            } finally {
+                URL.revokeObjectURL(url);
+            }
+        }
 
         async function convertVideoToGif() {
             const fileInput = document.getElementById('v2g-file').files[0];
             if (!fileInput) return alert('请选择视频文件！');
-            if (fileInput.size > 10 * 1024 * 1024) return alert('视频请小于 10MB（演示限制）');
-            
             const status = document.getElementById('v2g-status');
             const btn = document.getElementById('v2g-btn');
             const fps = document.getElementById('v2g-fps').value || 10;
             const width = document.getElementById('v2g-width').value || 320;
-            const ffBase = vendorUrl('./vendor/ffmpeg/');
-            
-            status.innerText = '正在加载 FFmpeg 引擎...';
-            btn.disabled = true;
-            btn.classList.add('opacity-50', 'cursor-not-allowed');
 
-            try {
-                if (ffmpeg === null) {
-                    ffmpeg = new FFmpeg();
-                    ffmpeg.on('log', ({ message }) => {
-                        console.log(message);
-                        if(message.includes('frame=')) {
-                            status.innerText = '正在处理视频帧... ' + message;
-                        }
-                    });
+            await runWithToolGuard({
+                btn,
+                statusEl: status,
+                timeoutMs: 180000,
+                validate: async () => {
+                    assertFileSize(fileInput, 10 * 1024 * 1024, '视频');
+                    const duration = await getVideoDurationSec(fileInput);
+                    if (duration > 15) {
+                        throw new Error('视频时长不能超过 15 秒（当前 ' + duration.toFixed(1) + ' 秒）');
+                    }
+                },
+                onSuccessStatus: '转换成功，已开始下载！',
+                task: async () => {
+                    status.innerText = '正在加载 FFmpeg 引擎...';
+                    const ffmpegInstance = await getFfmpeg();
+                    const { fetchFile } = FFmpegUtil;
+
+                    status.innerText = '正在读取文件...';
+                    const inputName = 'input_video' + fileInput.name.substring(fileInput.name.lastIndexOf('.'));
+                    const outputName = 'output.gif';
+
+                    await ffmpegInstance.writeFile(inputName, await fetchFile(fileInput));
+
+                    status.innerText = '正在转换 GIF (耗时较长，请耐心等待)...';
                     await raceWithTimeout(
-                        ffmpeg.load({
-                            coreURL: ffBase + 'ffmpeg-core.js',
-                            wasmURL: ffBase + 'ffmpeg-core.wasm'
-                        }),
-                        60000,
-                        'FFmpeg 引擎加载超时（60s）'
+                        ffmpegInstance.exec(['-i', inputName, '-vf', `fps=${fps},scale=${width}:-1:flags=lanczos`, outputName]),
+                        120000,
+                        'GIF 转换超时（120s）'
                     );
-                }
 
-                status.innerText = '正在读取文件...';
-                const inputName = 'input_video' + fileInput.name.substring(fileInput.name.lastIndexOf('.'));
-                const outputName = 'output.gif';
-                
-                await ffmpeg.writeFile(inputName, await fetchFile(fileInput));
-                
-                status.innerText = '正在转换 GIF (耗时较长，请耐心等待)...';
-                // 运行 ffmpeg 命令：设置帧率和缩放宽度（保持比例）
-                await ffmpeg.exec(['-i', inputName, '-vf', `fps=${fps},scale=${width}:-1:flags=lanczos`, outputName]);
-                
-                status.innerText = '正在生成下载文件...';
-                const data = await ffmpeg.readFile(outputName);
-                
-                const blob = new Blob([data.buffer], { type: 'image/gif' });
-                downloadFile(fileInput.name.replace(/\.[^/.]+$/, "") + '.gif', blob);
-                
-                status.innerText = '转换成功，已开始下载！';
-                
-            } catch (err) {
-                status.innerText = '转换失败：' + err.message;
-            } finally {
-                btn.disabled = false;
-                btn.classList.remove('opacity-50', 'cursor-not-allowed');
-            }
+                    status.innerText = '正在生成下载文件...';
+                    const data = await ffmpegInstance.readFile(outputName);
+                    const blob = new Blob([data.buffer], { type: 'image/gif' });
+                    downloadFile(fileInput.name.replace(/\.[^/.]+$/, "") + '.gif', blob);
+                }
+            });
         }
 
         // --- 13. 扫码链接WiFi ---

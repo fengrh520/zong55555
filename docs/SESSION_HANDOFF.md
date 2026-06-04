@@ -70,9 +70,22 @@ npm run audit:local        # 本地（需先 npm run vendor）
 
 ---
 
-## 待办（P1+）
+## P1 / P2 进度（基础设施）
 
-Word/PDF/Excel/大文件：上传校验、90s 超时、步骤文案。CDN 本地化、`index.html` 拆分等见原 P1/P2。
+| 项 | 状态 | 说明 |
+|----|------|------|
+| 依赖就绪检测 | ✅ | `js/deps-check.js`：DOMContentLoaded 检查 11 个全局库，缺失则 `#deps-error-banner` 红条 |
+| COOP/COEP 范围 | ✅ | `vercel.json` 仅 `/` 与 `/index.html`（ffmpeg SharedArrayBuffer）；`vendor/*` 仍 CORP + 长缓存 |
+| 工具函数不动 | ✅ | 未改 `convertWord2Pdf`、OCR、视频转 GIF 等内联实现 |
+| CDN 本地化 | 待办 | 除 tesseract/ffmpeg 外仍走 CDN |
+| `index.html` 拆分 | 待办 | 工具逻辑仍内联；仅新增 deps-check 外链 |
+| Word/PDF/Excel 体验 | 待办 | 上传校验、90s 超时、步骤文案 |
+
+---
+
+## 待办（P1+ 余下）
+
+Word/PDF/Excel/大文件：上传校验、90s 超时、步骤文案。CDN 全量本地化、`index.html` 按工具拆 JS 文件。
 
 ---
 

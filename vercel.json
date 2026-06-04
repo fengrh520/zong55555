@@ -1,7 +1,16 @@
 {
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "_coop_coep_note": "COOP same-origin + COEP require-corp only on / and /index.html: ffmpeg.wasm needs crossOriginIsolated (SharedArrayBuffer). Site-wide COOP/COEP breaks third-party CDN scripts without CORP; api/chat.js and other static paths do not need SAB.",
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/",
+      "headers": [
+        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
+        { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" }
+      ]
+    },
+    {
+      "source": "/index.html",
       "headers": [
         { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
         { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" }
