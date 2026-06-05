@@ -5,24 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>HTML Tools - 轻量级工具集</title>
     
-    <!-- 引入 Tailwind CSS 并开启深色模式支持 -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        darkBg: '#0f172a', /* 深蓝背景 */
-                        cardBg: '#1e293b', /* 卡片背景 */
-                        cardHover: '#334155', /* 卡片悬浮 */
-                        primary: '#6366f1', /* 主题蓝 */
-                    }
-                }
-            }
-        }
-    </script>
-    
+    <!-- 本地 Tailwind（COEP 会拦截 CDN，必须同源） -->
+    <link rel="stylesheet" href="./css/tailwind.css">
     <!-- === 各种前端开源库 === -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/browser-image-compression@2.0.2/dist/browser-image-compression.js"></script>
@@ -37,51 +21,69 @@
     <script src="./vendor/ffmpeg/ffmpeg.js"></script>
     <script src="./vendor/ffmpeg/ffmpeg-util.js"></script>
 
-    <!-- 引入分离的样式表 -->
+    <script src="./vendor/ffmpeg/ffmpeg-util.js"></script>
+    <script src="./js/deps-check.js"></script>
+
     <link rel="stylesheet" href="./css/style.css">
 </head>
-<body class="min-h-screen flex flex-col">
-    <!-- 全局拖拽遮罩 -->
-    <div id="dropzone-overlay" class="fixed inset-0 bg-blue-900/40 backdrop-blur-sm opacity-0 flex flex-col items-center justify-center">
-        <div class="w-32 h-32 bg-blue-500 rounded-full animate-bounce flex items-center justify-center mb-6 shadow-2xl shadow-blue-500/50">
-            <svg class="w-16 h-16 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
+<body class="min-h-screen flex flex-col bg-[#0b0f19] text-slate-200">
+    <!-- 全局拖拽遮罩（默认隐藏，CSS 控制） -->
+    <div id="dropzone-overlay" class="dropzone-overlay">
+        <div class="dropzone-icon">
+            <svg class="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"></path></svg>
         </div>
-        <h2 class="text-4xl font-bold text-white tracking-widest drop-shadow-lg">松开鼠标，释放魔法</h2>
-        <p class="text-blue-200 mt-4 text-lg">系统将自动识别文件并启动对应工具</p>
+        <h2 class="text-2xl md:text-3xl font-bold text-white tracking-wide">松开鼠标，释放魔法</h2>
+        <p class="text-indigo-200 mt-3 text-sm md:text-base">系统将自动识别文件并启动对应工具</p>
     </div>
     
-    <!-- 顶部导航条 -->
-    <header class="border-b border-gray-800 bg-[#0f172a]/80 backdrop-blur-md sticky top-0 z-40">
-        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
-                    <span class="text-white font-bold text-xl">HT</span>
+    <header class="sticky top-0 z-40 border-b border-slate-800/80 bg-[#0b0f19]/90 backdrop-blur-md">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-3 no-underline">
+                <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-indigo-500 to-violet-600 flex items-center justify-center shadow-lg shadow-indigo-500/20">
+                    <span class="text-white font-bold text-sm">HT</span>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold text-white tracking-wide">HTML Tools</h1>
-                    <p class="text-xs text-gray-400">轻量级单文件前端工具集</p>
+                    <div class="text-base font-semibold text-white leading-tight">HTML Tools</div>
+                    <div class="text-[11px] text-slate-500">轻量级 HTML 工具集</div>
                 </div>
-            </div>
-            <div class="flex gap-4">
-                <button onclick="openAI()" class="px-4 py-2 rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white text-sm font-bold transition-all shadow-lg shadow-purple-500/30 flex items-center gap-2">
-                    <span class="text-lg">🤖</span> 小封AI
-                </button>
-            </div>
+            </a>
+            <button onclick="openAI()" class="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-500 text-white text-sm font-medium transition-all shadow-lg shadow-indigo-500/20">
+                <span>🤖</span> 小封AI
+            </button>
         </div>
     </header>
 
-    <!-- 主体内容：卡片网格 -->
-    <main class="flex-1 max-w-7xl mx-auto px-6 py-12 w-full">
-        <div class="flex items-center justify-between mb-8">
-            <h2 class="text-2xl font-bold text-white">工具列表</h2>
-            <span class="text-sm text-gray-400">共 13 个工具</span>
-        </div>
+    <main class="flex-1 w-full">
+        <!-- Hero（参考 tools.karing.app） -->
+        <section class="border-b border-slate-800/60 bg-gradient-to-b from-slate-900/50 to-transparent">
+            <div class="max-w-6xl mx-auto px-4 sm:px-6 py-10 md:py-12">
+                <h1 class="text-3xl md:text-4xl font-bold text-white tracking-tight mb-3">轻量级 HTML 工具集合</h1>
+                <p class="text-slate-400 text-base md:text-lg">共 <strong class="text-white font-semibold">13</strong> 个工具 · 无需安装，打开即用 · 保护隐私，数据本地处理</p>
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mt-8">
+                    <div class="stat-card"><div class="stat-num">13</div><div class="stat-label">工具数量</div></div>
+                    <div class="stat-card"><div class="stat-num">4</div><div class="stat-label">分类数量</div></div>
+                    <div class="stat-card"><div class="stat-num">100%</div><div class="stat-label">本地处理</div></div>
+                    <div class="stat-card"><div class="stat-num">免费</div><div class="stat-label">开源使用</div></div>
+                </div>
+            </div>
+        </section>
 
-        <!-- 瀑布流网格布局 (调整为每行3个) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="card-grid">
+        <section class="max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-10 w-full">
+            <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+                <h2 class="text-lg font-bold text-white">工具列表</h2>
+                <div class="flex flex-wrap gap-2" id="cat-filter">
+                    <button type="button" data-filter="all" class="cat-btn active">全部</button>
+                    <button type="button" data-filter="common" class="cat-btn">常用</button>
+                    <button type="button" data-filter="doc" class="cat-btn">文档</button>
+                    <button type="button" data-filter="image" class="cat-btn">图像</button>
+                    <button type="button" data-filter="media" class="cat-btn">媒体</button>
+                </div>
+            </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-5" id="card-grid">
             
             <!-- 卡片 1：时间计算器 -->
-            <div onclick="openTool('tool-time', '⏳ 时间计算器')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+            <div onclick="openTool('tool-time', '⏳ 时间计算器')" data-cat="common" class="tool-card bg-cardBg rounded-xl p-5 cursor-pointer group">
                 <div class="flex justify-between items-start mb-4">
                     <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-2xl group-hover:bg-blue-500/20 transition-colors">⏳</div>
                     <span class="px-2 py-1 text-[10px] font-bold bg-orange-500/20 text-orange-400 rounded">常用</span>
@@ -95,7 +97,7 @@
             </div>
 
             <!-- 卡片 2：二维码生成 -->
-            <div class="tool-card bg-cardBg rounded-2xl p-6 relative overflow-hidden group">
+            <div data-cat="common" class="tool-card bg-cardBg rounded-xl p-5 relative overflow-hidden group">
                 <div class="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none"></div>
                 <div class="flex justify-between items-start mb-4 relative z-10">
                     <div class="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-2xl group-hover:bg-green-500/20 transition-colors">🔗</div>
@@ -115,7 +117,7 @@
             </div>
 
             <!-- 卡片 3：图片压缩 -->
-            <div onclick="openTool('tool-ic', '🖼️ 图片压缩')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+            <div onclick="openTool('tool-ic', '🖼️ 图片压缩')" data-cat="image" class="tool-card bg-cardBg rounded-xl p-5 cursor-pointer group">
                 <div class="flex justify-between items-start mb-4">
                     <div class="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-2xl group-hover:bg-purple-500/20 transition-colors">🖼️</div>
                     <span class="px-2 py-1 text-[10px] font-bold bg-blue-500/20 text-blue-400 rounded">极速</span>
@@ -128,7 +130,7 @@
             </div>
 
             <!-- 卡片 4：Word转PDF -->
-            <div onclick="openTool('tool-w2p', '📄 Word 转 PDF')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+            <div onclick="openTool('tool-w2p', '📄 Word 转 PDF')" data-cat="doc" class="tool-card bg-cardBg rounded-xl p-5 cursor-pointer group">
                 <div class="flex justify-between items-start mb-4">
                     <div class="w-12 h-12 rounded-xl bg-red-500/10 flex items-center justify-center text-2xl group-hover:bg-red-500/20 transition-colors">📄</div>
                 </div>
@@ -140,7 +142,7 @@
             </div>
 
             <!-- 卡片 5：PDF转图片 -->
-            <div onclick="openTool('tool-p2i', '🖼️ PDF 转 图片')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+            <div onclick="openTool('tool-p2i', '🖼️ PDF 转 图片')" data-cat="doc" class="tool-card bg-cardBg rounded-xl p-5 cursor-pointer group">
                 <div class="flex justify-between items-start mb-4">
                     <div class="w-12 h-12 rounded-xl bg-orange-500/10 flex items-center justify-center text-2xl group-hover:bg-orange-500/20 transition-colors">🖼️</div>
                     <span class="px-2 py-1 text-[10px] font-bold bg-blue-500/20 text-blue-400 rounded">多页</span>
@@ -153,7 +155,7 @@
             </div>
 
             <!-- 卡片 6：图片转ico -->
-            <div onclick="openTool('tool-i2i', '🔄 图片 转 ico')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+            <div onclick="openTool('tool-i2i', '🔄 图片 转 ico')" data-cat="image" class="tool-card bg-cardBg rounded-xl p-5 cursor-pointer group">
                 <div class="flex justify-between items-start mb-4">
                     <div class="w-12 h-12 rounded-xl bg-yellow-500/10 flex items-center justify-center text-2xl group-hover:bg-yellow-500/20 transition-colors">🔄</div>
                 </div>
@@ -165,7 +167,7 @@
             </div>
 
             <!-- 卡片 7：txt转json -->
-            <div onclick="openTool('tool-t2j', '📋 txt 转 json')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+            <div onclick="openTool('tool-t2j', '📋 txt 转 json')" data-cat="doc" class="tool-card bg-cardBg rounded-xl p-5 cursor-pointer group">
                 <div class="flex justify-between items-start mb-4">
                     <div class="w-12 h-12 rounded-xl bg-cyan-500/10 flex items-center justify-center text-2xl group-hover:bg-cyan-500/20 transition-colors">📋</div>
                 </div>
@@ -177,7 +179,7 @@
             </div>
 
             <!-- 卡片 8：markdown转Word -->
-            <div onclick="openTool('tool-m2w', '📝 markdown 转 Word')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+            <div onclick="openTool('tool-m2w', '📝 markdown 转 Word')" data-cat="doc" class="tool-card bg-cardBg rounded-xl p-5 cursor-pointer group">
                 <div class="flex justify-between items-start mb-4">
                     <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-2xl group-hover:bg-blue-500/20 transition-colors">📝</div>
                 </div>
@@ -189,7 +191,7 @@
             </div>
 
             <!-- 卡片 9：markdown转HTML -->
-            <div onclick="openTool('tool-m2h', '🌐 markdown 转 HTML')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+            <div onclick="openTool('tool-m2h', '🌐 markdown 转 HTML')" data-cat="doc" class="tool-card bg-cardBg rounded-xl p-5 cursor-pointer group">
                 <div class="flex justify-between items-start mb-4">
                     <div class="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center text-2xl group-hover:bg-green-500/20 transition-colors">🌐</div>
                 </div>
@@ -201,7 +203,7 @@
             </div>
 
             <!-- 卡片 10：Excel转CSV -->
-            <div onclick="openTool('tool-e2c', '📊 Excel 转 CSV')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+            <div onclick="openTool('tool-e2c', '📊 Excel 转 CSV')" data-cat="doc" class="tool-card bg-cardBg rounded-xl p-5 cursor-pointer group">
                 <div class="flex justify-between items-start mb-4">
                     <div class="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center text-2xl group-hover:bg-purple-500/20 transition-colors">📊</div>
                     <span class="px-2 py-1 text-[10px] font-bold bg-green-500/20 text-green-400 rounded">表格</span>
@@ -214,7 +216,7 @@
             </div>
 
             <!-- 卡片 11：图片提取文字 (OCR) -->
-            <div onclick="openTool('tool-ocr', '🔍 图片提取文字')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+            <div onclick="openTool('tool-ocr', '🔍 图片提取文字')" data-cat="image" class="tool-card bg-cardBg rounded-xl p-5 cursor-pointer group">
                 <div class="flex justify-between items-start mb-4">
                     <div class="w-12 h-12 rounded-xl bg-fuchsia-500/10 flex items-center justify-center text-2xl group-hover:bg-fuchsia-500/20 transition-colors">🔍</div>
                     <span class="px-2 py-1 text-[10px] font-bold bg-purple-500/20 text-purple-400 rounded">AI 黑科技</span>
@@ -228,7 +230,7 @@
             </div>
 
             <!-- 卡片 12：视频转 GIF -->
-            <div onclick="openTool('tool-v2g', '🎬 视频转 GIF')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+            <div onclick="openTool('tool-v2g', '🎬 视频转 GIF')" data-cat="media" class="tool-card bg-cardBg rounded-xl p-5 cursor-pointer group">
                 <div class="flex justify-between items-start mb-4">
                     <div class="w-12 h-12 rounded-xl bg-teal-500/10 flex items-center justify-center text-2xl group-hover:bg-teal-500/20 transition-colors">🎬</div>
                     <span class="px-2 py-1 text-[10px] font-bold bg-teal-500/20 text-teal-400 rounded">WASM</span>
@@ -242,7 +244,7 @@
             </div>
 
             <!-- 卡片 13：扫码链接WiFi -->
-            <div onclick="openTool('tool-wifi', '📶 扫码链接WiFi')" class="tool-card bg-cardBg rounded-2xl p-6 cursor-pointer group">
+            <div onclick="openTool('tool-wifi', '📶 扫码链接WiFi')" data-cat="common" class="tool-card bg-cardBg rounded-xl p-5 cursor-pointer group">
                 <div class="flex justify-between items-start mb-4">
                     <div class="w-12 h-12 rounded-xl bg-blue-500/10 flex items-center justify-center text-2xl group-hover:bg-blue-500/20 transition-colors">📶</div>
                     <span class="px-2 py-1 text-[10px] font-bold bg-green-500/20 text-green-400 rounded">便捷</span>
@@ -256,7 +258,30 @@
             </div>
 
         </div>
+        </section>
     </main>
+
+    <footer class="border-t border-slate-800/80 bg-[#080b12] mt-auto">
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 grid grid-cols-1 md:grid-cols-3 gap-8 text-sm">
+            <div>
+                <div class="font-semibold text-white mb-2">HTML 工具箱</div>
+                <p class="text-slate-500 leading-relaxed">单页 HTML 工具集，数据在浏览器本地处理，不上传服务器。</p>
+            </div>
+            <div>
+                <div class="font-semibold text-white mb-2">设计理念</div>
+                <ul class="text-slate-500 space-y-1">
+                    <li>· 无需安装，打开即用</li>
+                    <li>· 隐私优先，本地计算</li>
+                    <li>· 拖拽文件自动匹配工具</li>
+                </ul>
+            </div>
+            <div>
+                <div class="font-semibold text-white mb-2">参考</div>
+                <a href="https://tools.karing.app/" target="_blank" rel="noopener" class="text-indigo-400 hover:text-indigo-300">tools.karing.app</a>
+            </div>
+        </div>
+        <div class="text-center text-xs text-slate-600 pb-6">© 2026 HTML Tools · tools.5593102.top</div>
+    </footer>
 
     <!-- 弹窗工作区 (点击卡片后弹出) -->
     <div id="workspace-modal" class="fixed inset-0 z-50 flex items-center justify-center opacity-0 pointer-events-none bg-black/60 backdrop-blur-sm">
@@ -666,10 +691,22 @@
             cards.forEach(card => grid.appendChild(card));
             
             cards.forEach((card, index) => {
-                // 每个卡片按顺序逐个出现，延迟间隔拉长到 120ms，显得更有条不紊
                 setTimeout(() => {
                     card.classList.add('show');
-                }, index * 120); 
+                }, index * 80);
+            });
+
+            // 分类筛选
+            document.querySelectorAll('#cat-filter .cat-btn').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    document.querySelectorAll('#cat-filter .cat-btn').forEach(b => b.classList.remove('active'));
+                    btn.classList.add('active');
+                    const f = btn.dataset.filter;
+                    document.querySelectorAll('.tool-card').forEach(card => {
+                        const show = f === 'all' || card.dataset.cat === f;
+                        card.style.display = show ? '' : 'none';
+                    });
+                });
             });
 
             // 恢复本地存储的状态

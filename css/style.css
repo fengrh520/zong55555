@@ -1,64 +1,129 @@
 body {
     background-color: #0b0f19;
     color: #e2e8f0;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PingFang SC", "Microsoft YaHei", sans-serif;
 }
 
-/* 滚动条美化 */
+/* 滚动条 */
 ::-webkit-scrollbar { width: 8px; }
 ::-webkit-scrollbar-track { background: #0b0f19; }
 ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
 ::-webkit-scrollbar-thumb:hover { background: #475569; }
 
-/* 卡片悬浮动画 */
-.tool-card {
-    transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1); 
-    border: 1px solid #1e293b;
-    /* 初始状态：向下偏移且透明，等待 JS 触发动画 */
-    opacity: 0;
-    transform: translateY(50px); 
+/* Hero 统计卡片（karing 风格） */
+.stat-card {
+    background: rgba(30, 41, 59, 0.6);
+    border: 1px solid rgba(51, 65, 85, 0.8);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    text-align: center;
+}
+.stat-num {
+    font-size: 1.75rem;
+    font-weight: 700;
+    color: #fff;
+    line-height: 1.2;
+}
+.stat-label {
+    font-size: 0.75rem;
+    color: #94a3b8;
+    margin-top: 0.25rem;
 }
 
-/* 当加上 show 类时触发进入动画 */
+/* 分类筛选 */
+.cat-btn {
+    padding: 0.35rem 0.85rem;
+    font-size: 0.8125rem;
+    border-radius: 9999px;
+    border: 1px solid #334155;
+    background: transparent;
+    color: #94a3b8;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.cat-btn:hover {
+    border-color: #6366f1;
+    color: #e2e8f0;
+}
+.cat-btn.active {
+    background: #6366f1;
+    border-color: #6366f1;
+    color: #fff;
+}
+
+/* 工具卡片 */
+.tool-card {
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease, opacity 0.4s ease;
+    border: 1px solid #1e293b;
+    opacity: 0;
+    transform: translateY(16px);
+}
 .tool-card.show {
     opacity: 1;
     transform: translateY(0);
 }
-
 .tool-card:hover {
-    transform: translateY(-6px);
-    border-color: #3b82f6;
-    box-shadow: 0 12px 30px -5px rgba(59, 130, 246, 0.25);
-    background-color: #1e293b;
+    transform: translateY(-4px);
+    border-color: #6366f1;
+    box-shadow: 0 12px 28px -8px rgba(99, 102, 241, 0.25);
 }
 
-/* 模态弹窗（工作区）动画 */
-#workspace-modal {
-    transition: opacity 0.3s ease;
-}
-.modal-content {
-    transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-
+/* 模态弹窗 */
+#workspace-modal { transition: opacity 0.3s ease; }
+.modal-content { transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 .tool-panel { display: none; }
 .tool-panel.active { display: block; }
 
-/* 全局拖拽遮罩层 */
+/* 拖拽遮罩：默认完全隐藏，避免 Tailwind 失效时露出大白块 */
+.dropzone-overlay,
 #dropzone-overlay {
-    transition: all 0.3s ease;
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    background: rgba(15, 23, 42, 0.85);
+    backdrop-filter: blur(8px);
+    opacity: 0;
+    visibility: hidden;
     pointer-events: none;
+    transition: opacity 0.25s ease, visibility 0.25s ease;
 }
+body.drag-active .dropzone-overlay,
 body.drag-active #dropzone-overlay {
     opacity: 1;
-    z-index: 9999;
+    visibility: visible;
+}
+.dropzone-icon {
+    width: 4.5rem;
+    height: 4.5rem;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1.25rem;
+    box-shadow: 0 8px 32px rgba(99, 102, 241, 0.4);
+    animation: drop-bounce 1.2s ease infinite;
+}
+@keyframes drop-bounce {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
 }
 
-/* 隐藏文件输入框，用更美观的拖拽区代替 */
 .file-drop-area {
     border: 2px dashed #475569;
     transition: all 0.3s ease;
 }
-.file-drop-area:hover, .file-drop-area.drag-over {
+.file-drop-area:hover,
+.file-drop-area.drag-over {
     border-color: #6366f1;
     background-color: rgba(99, 102, 241, 0.1);
+}
+
+/* 依赖错误横幅留出顶部空间 */
+body:has(#deps-error-banner) header {
+    top: 2.75rem;
 }
