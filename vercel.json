@@ -1,6 +1,5 @@
 {
-  "installCommand": "npm install --ignore-scripts",
-  "buildCommand": "npm run build:css",
+  "installCommand": "npm install --ignore-scripts --omit=dev",
   "headers": [
     {
       "source": "/(.*)",
