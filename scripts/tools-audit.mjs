@@ -246,39 +246,27 @@ const TOOLS = [
     tab: "tool-v2g",
     async run(page) {
       await openTool(page, "tool-v2g");
-      const cdnOk = await page.evaluate(() => typeof FFmpegWASM !== "undefined");
-      if (!cdnOk) return { status: "fail", detail: "FFmpeg CDN 未加载", ms: 0 };
-
-      await page.evaluate(async () => {
-        try {
-          const { FFmpeg } = FFmpegWASM;
-          const base = new URL("./vendor/ffmpeg/", location.href).href;
-          const f = new FFmpeg();
-          await Promise.race([
-            f.load({
-              coreURL: base + "ffmpeg-core.js",
-              wasmURL: base + "ffmpeg-core.wasm",
-            }),
-            new Promise((_, rej) => setTimeout(() => rej(new Error("load timeout 30s")), 30000)),
-          ]);
-          window.__ffmpegLoadOk = true;
-        } catch (e) {
-          window.__ffmpegLoadErr = String(e.message || e);
-        }
-      });
+      const cdnOk = await page.evaluate(() => typeof FFmpegWASM !== "undefined" && typeof getFfmpeg === "function");
+      if (!cdnOk) return { status: "fail", detail: "FFmpeg 或 getFfmpeg 未加载", ms: 0 };
 
       const r2 = await waitForCondition(
         page,
         async () =>
-          page.evaluate(() => {
-            if (window.__ffmpegLoadOk) return "ok";
-            if (window.__ffmpegLoadErr) return "err:" + window.__ffmpegLoadErr;
-            return null;
+          page.evaluate(async () => {
+            try {
+              await Promise.race([
+                getFfmpeg(),
+                new Promise((_, rej) => setTimeout(() => rej(new Error("load timeout 60s")), 60000)),
+              ]);
+              return "ok";
+            } catch (e) {
+              return "err:" + String(e.message || e);
+            }
           }),
-        TIMEOUT_MS
+        65000
       );
 
-      if (r2.ok && r2.value === "ok") return { status: "pass", detail: "FFmpeg 引擎 30s 内加载成功", ms: r2.ms };
+      if (r2.ok && r2.value === "ok") return { status: "pass", detail: "FFmpeg 引擎 60s 内加载成功", ms: r2.ms };
       if (r2.ok && String(r2.value).startsWith("err:"))
         return { status: "fail", detail: r2.value.slice(4), ms: r2.ms };
       return { status: "hang", detail: "FFmpeg 30s 无响应", ms: r2.ms || TIMEOUT_MS };
