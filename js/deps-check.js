@@ -15,6 +15,7 @@
     "Tesseract",
     "FFmpegWASM",
     "FFmpegUtil",
+    "PDFLib",
   ];
 
   function showDepsErrorBanner(missing) {

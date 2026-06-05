@@ -1,5 +1,5 @@
 /**
- * 逐个检测 13 个工具：30 秒内必须有明确结果（成功或失败文案），否则判「卡住/不可用」
+ * 逐个检测 16 个工具：30 秒内必须有明确结果（成功或失败文案），否则判「卡住/不可用」
  * 用法: node scripts/tools-audit.mjs [url]
  * 默认测线上 https://tools.5593102.top
  */
@@ -27,6 +27,7 @@ const LIBS = [
   "Tesseract",
   "FFmpegWASM",
   "FFmpegUtil",
+  "PDFLib",
 ];
 
 function wait(ms) {
@@ -222,6 +223,58 @@ const TOOLS = [
         return null;
       });
       return classifyStatus(r, "e2c");
+    },
+  },
+  {
+    id: "imgfmt",
+    name: "图片格式互转",
+    tab: "tool-imgfmt",
+    async run(page) {
+      await openTool(page, "tool-imgfmt");
+      await page.setInputFiles("#imgfmt-file", path.join(FIX, "sample.png"));
+      await page.click("#imgfmt-btn");
+      const r = await waitForCondition(page, async () => {
+        const t = await page.locator("#imgfmt-status").innerText();
+        if (/转换完成|转换失败/.test(t)) return t;
+        return null;
+      });
+      return classifyStatus(r, "imgfmt");
+    },
+  },
+  {
+    id: "idphoto",
+    name: "证件照裁剪换底色",
+    tab: "tool-idphoto",
+    async run(page) {
+      await openTool(page, "tool-idphoto");
+      await page.setInputFiles("#idphoto-file", path.join(FIX, "sample.png"));
+      await page.waitForTimeout(500);
+      await page.click("#idphoto-btn");
+      const r = await waitForCondition(page, async () => {
+        const t = await page.locator("#idphoto-status").innerText();
+        if (/证件照已生成|转换失败|压缩失败|识别失败|处理完成|失败/.test(t)) return t;
+        return null;
+      });
+      return classifyStatus(r, "idphoto");
+    },
+  },
+  {
+    id: "pdfms",
+    name: "PDF 合并拆分",
+    tab: "tool-pdfms",
+    async run(page) {
+      const pdf = path.join(FIX, "sample.pdf");
+      if (!fs.existsSync(pdf)) return { status: "skip", detail: "缺少 sample.pdf", ms: 0 };
+      await openTool(page, "tool-pdfms");
+      await page.selectOption("#pdfms-mode", "split");
+      await page.setInputFiles("#pdfms-split-file", pdf);
+      await page.click("#pdfms-btn");
+      const r = await waitForCondition(page, async () => {
+        const t = await page.locator("#pdfms-status").innerText();
+        if (/处理完成|转换失败|失败/.test(t)) return t;
+        return null;
+      }, 60000);
+      return classifyStatus(r, "pdfms");
     },
   },
   {

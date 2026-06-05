@@ -90,6 +90,10 @@ async function main() {
     path.join(nm, "@ffmpeg/util/dist/umd/index.js"),
     path.join(VENDOR, "ffmpeg/ffmpeg-util.js")
   );
+  copyFile(
+    path.join(nm, "pdf-lib/dist/pdf-lib.min.js"),
+    path.join(VENDOR, "pdf-lib/pdf-lib.min.js")
+  );
 
   // Tesseract worker（同源）
   const tessDist = path.join(nm, "tesseract.js/dist");

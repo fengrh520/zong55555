@@ -123,6 +123,13 @@ body.drag-active #dropzone-overlay {
     background-color: rgba(99, 102, 241, 0.1);
 }
 
+/* 证件照预览 */
+#idphoto-preview {
+    max-height: 360px;
+    width: auto;
+    height: auto;
+}
+
 /* 依赖错误横幅留出顶部空间 */
 body:has(#deps-error-banner) header {
     top: 2.75rem;
